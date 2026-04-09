@@ -93,7 +93,7 @@ async function getPostAuthRedirectPath(store, returnToPath) {
     return '/inventory';
   }
 
-  const boxCode = getBoxCodeFromPath(validatedPath.replace('/q/', '/boxes/'));
+  const boxCode = getBoxCodeFromPath(validatedPath);
   const box = await findActiveBoxByCode(store, boxCode);
 
   if (!box) {
@@ -162,7 +162,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'GET' && /^\/q\/[^/]+$/.test(url.pathname)) {
-      const boxCode = getBoxCodeFromPath(url.pathname.replace('/q/', '/boxes/'));
+      const boxCode = getBoxCodeFromPath(url.pathname);
       const box = await findActiveBoxByCode(store, boxCode);
 
       if (!box) {
