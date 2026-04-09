@@ -36,10 +36,11 @@ export function renderCheckEmailPage() {
   });
 }
 
-export function renderInventoryPage(workspace, values = {}, errors = {}) {
+export function renderInventoryPage(workspace, values = {}, errors = {}, options = {}) {
   const name = escapeHtml(values.name ?? '');
   const location = escapeHtml(values.location ?? '');
   const notes = escapeHtml(values.notes ?? '');
+  const inviteEmail = escapeHtml(options.inviteValues?.email ?? '');
 
   return renderPage({
     title: 'Inventory',
@@ -69,6 +70,18 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
             </label>
             ${errors.notes ? `<p>${escapeHtml(errors.notes)}</p>` : ''}
             <button type="submit">Create box</button>
+          </form>
+        </section>
+        <section>
+          <h2>Invite people</h2>
+          ${options.inviteMessage ? `<p>${escapeHtml(options.inviteMessage)}</p>` : ''}
+          ${options.inviteError ? `<p>${escapeHtml(options.inviteError)}</p>` : ''}
+          <form method="post" action="/workspace/invites">
+            <label>
+              Email
+              <input type="email" name="email" autocomplete="email" value="${inviteEmail}" required />
+            </label>
+            <button type="submit">Send invite</button>
           </form>
         </section>
         <section>
@@ -237,6 +250,19 @@ export function renderMagicLinkErrorPage() {
         <h1>This link has expired</h1>
         <p>Request a new magic link to continue.</p>
         <p><a href="/sign-in">Request a new magic link</a></p>
+      </main>
+    `,
+  });
+}
+
+export function renderInviteErrorPage() {
+  return renderPage({
+    title: 'Invite link error',
+    body: `
+      <main>
+        <h1>This invite link has expired</h1>
+        <p>Request a new invite to continue.</p>
+        <p><a href="/sign-in">Request a new invite</a></p>
       </main>
     `,
   });

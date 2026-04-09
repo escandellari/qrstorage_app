@@ -2,6 +2,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { getStoredBoxDetailsFromBox } from './box-details.js';
+import { createMemberAuthStore } from './member-auth-store.js';
 import { MAX_ITEMS_PER_BOX } from './item-utils.js';
 
 function createEmptyData() {
@@ -11,6 +12,7 @@ function createEmptyData() {
     boxes: [],
     items: [],
     magicLinks: [],
+    invites: [],
     sessions: [],
   };
 }
@@ -23,6 +25,7 @@ export async function createDataStore(dataDir, seedData = {}) {
     boxes: seedData.boxes ?? [],
     items: seedData.items ?? [],
     magicLinks: seedData.magicLinks ?? [],
+    invites: seedData.invites ?? [],
     sessions: seedData.sessions ?? [],
   };
 
@@ -52,71 +55,7 @@ export async function createDataStore(dataDir, seedData = {}) {
   }
 
   return {
-    async findMemberByEmail(email) {
-      const data = await readData();
-      return data.members.find((member) => member.email.toLowerCase() === email.toLowerCase()) ?? null;
-    },
-
-    async findWorkspaceById(workspaceId) {
-      const data = await readData();
-      return data.workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
-    },
-
-    async createMagicLink(email, memberId, expiresAt, returnTo = '/inventory') {
-      const data = await readData();
-      const record = {
-        token: randomUUID(),
-        email,
-        memberId,
-        expiresAt,
-        returnTo,
-        consumedAt: null,
-      };
-      data.magicLinks.push(record);
-      await writeData(data);
-      return record;
-    },
-
-    async findMagicLink(token) {
-      const data = await readData();
-      return data.magicLinks.find((magicLink) => magicLink.token === token) ?? null;
-    },
-
-    async consumeMagicLink(token, consumedAt) {
-      return withMutationLock(async () => {
-        const data = await readData();
-        const magicLink = data.magicLinks.find((record) => record.token === token);
-
-        if (!magicLink || magicLink.consumedAt || new Date(magicLink.expiresAt).getTime() <= Date.now()) {
-          return null;
-        }
-
-        magicLink.consumedAt = consumedAt;
-        await writeData(data);
-        return magicLink;
-      });
-    },
-
-    async findMemberById(memberId) {
-      const data = await readData();
-      return data.members.find((member) => member.id === memberId) ?? null;
-    },
-
-    async createSession(memberId) {
-      const data = await readData();
-      const session = {
-        id: randomUUID(),
-        memberId,
-      };
-      data.sessions.push(session);
-      await writeData(data);
-      return session;
-    },
-
-    async findSession(sessionId) {
-      const data = await readData();
-      return data.sessions.find((session) => session.id === sessionId) ?? null;
-    },
+    ...createMemberAuthStore({ readData, writeData, withMutationLock }),
 
     async createBox(workspaceId, { name, locationSummary, notes }) {
       return withMutationLock(async () => {
