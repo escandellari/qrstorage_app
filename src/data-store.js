@@ -36,6 +36,14 @@ export async function createDataStore(dataDir, seedData = {}) {
     await writeFile(filePath, JSON.stringify(data, null, 2));
   }
 
+  let mutationQueue = Promise.resolve();
+
+  function withMutationLock(callback) {
+    const run = mutationQueue.then(callback, callback);
+    mutationQueue = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
   return {
     async findMemberByEmail(email) {
       const data = await readData();
@@ -67,16 +75,18 @@ export async function createDataStore(dataDir, seedData = {}) {
     },
 
     async consumeMagicLink(token, consumedAt) {
-      const data = await readData();
-      const magicLink = data.magicLinks.find((record) => record.token === token);
+      return withMutationLock(async () => {
+        const data = await readData();
+        const magicLink = data.magicLinks.find((record) => record.token === token);
 
-      if (!magicLink) {
-        return null;
-      }
+        if (!magicLink || magicLink.consumedAt || new Date(magicLink.expiresAt).getTime() <= Date.now()) {
+          return null;
+        }
 
-      magicLink.consumedAt = consumedAt;
-      await writeData(data);
-      return magicLink;
+        magicLink.consumedAt = consumedAt;
+        await writeData(data);
+        return magicLink;
+      });
     },
 
     async findMemberById(memberId) {

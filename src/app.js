@@ -161,14 +161,13 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
 
     if (request.method === 'GET' && url.pathname === '/auth/magic-link') {
       const token = url.searchParams.get('token');
-      const magicLink = token ? await store.findMagicLink(token) : null;
+      const magicLink = token ? await store.consumeMagicLink(token, new Date().toISOString()) : null;
 
-      if (!magicLink || magicLink.consumedAt || new Date(magicLink.expiresAt).getTime() <= Date.now()) {
+      if (!magicLink) {
         sendHtml(response, 200, renderMagicLinkErrorPage());
         return;
       }
 
-      await store.consumeMagicLink(token, new Date().toISOString());
       const session = await store.createSession(magicLink.memberId);
       redirect(response, '/inventory', {
         'set-cookie': `session=${session.id}; Path=/; HttpOnly; SameSite=Lax`,

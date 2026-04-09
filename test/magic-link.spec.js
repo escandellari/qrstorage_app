@@ -85,3 +85,36 @@ test('GET /auth/magic-link rejects a token after it has already been used once',
     await app.close();
   }
 });
+
+test('GET /auth/magic-link only creates one session when the same token is opened concurrently', async () => {
+  const app = await createTestServer({ seedData: defaultSeedData });
+
+  try {
+    const magicLinkUrl = await requestMagicLink(app, 'owner@example.com');
+    const responses = await Promise.all([
+      fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' }),
+      fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' }),
+    ]);
+    const outcomes = await Promise.all(
+      responses.map(async (response) => ({
+        status: response.status,
+        location: response.headers.get('location'),
+        cookie: response.headers.get('set-cookie'),
+        body: await response.text(),
+      })),
+    );
+
+    const successfulSignIns = outcomes.filter((outcome) => outcome.status === 302);
+    const rejectedSignIns = outcomes.filter((outcome) => outcome.status === 200);
+
+    assert.equal(successfulSignIns.length, 1);
+    assert.equal(successfulSignIns[0].location, '/inventory');
+    assert.match(successfulSignIns[0].cookie, /session=/);
+
+    assert.equal(rejectedSignIns.length, 1);
+    assert.equal(rejectedSignIns[0].cookie, null);
+    assert.match(rejectedSignIns[0].body, /request a new magic link/i);
+  } finally {
+    await app.close();
+  }
+});
