@@ -9,6 +9,7 @@ import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
   renderInventoryPage,
+  renderInviteErrorPage,
   renderLabelPage,
   renderMagicLinkErrorPage,
   renderSignInPage,
@@ -50,6 +51,37 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       });
 
       sendHtml(response, 200, renderInventorySearchPage(workspace, search));
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/workspace/invites') {
+      const { member, workspace } = await getRequestContext(store, request);
+
+      if (!workspace) {
+        redirect(response, '/sign-in');
+        return;
+      }
+
+      const form = await readFormBody(request);
+      const email = String(form.get('email') ?? '').trim().toLowerCase();
+      const returnTo = await getPostAuthRedirectPath(store, String(form.get('returnTo') ?? ''));
+
+      if (member.role !== 'owner') {
+        sendHtml(
+          response,
+          200,
+          renderInventoryPage(workspace, {}, {}, { inviteValues: { email }, inviteError: 'Only the workspace owner can send invites. Contact the owner for access.' }),
+        );
+        return;
+      }
+
+      const invite = await store.createInvite(workspace.id, email, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), returnTo);
+      sentEmails.push({
+        id: randomUUID(),
+        to: email,
+        inviteUrl: `/invites/${invite.token}`,
+      });
+      sendHtml(response, 200, renderInventoryPage(workspace, {}, {}, { inviteMessage: 'Invite sent.', inviteValues: { email: '' } }));
       return;
     }
 
@@ -137,6 +169,31 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
+    if (request.method === 'GET' && /^\/invites\/[^/]+$/.test(url.pathname)) {
+      const inviteToken = decodeURIComponent(url.pathname.split('/')[2] ?? '');
+      const invite = inviteToken ? await store.findInvite(inviteToken) : null;
+
+      if (!invite || new Date(invite.expiresAt).getTime() <= Date.now()) {
+        sendHtml(response, 200, renderInviteErrorPage());
+        return;
+      }
+
+      const magicLink = await store.createMagicLink(
+        invite.email,
+        null,
+        new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        invite.returnTo ?? '/inventory',
+        invite.token,
+      );
+      sentEmails.push({
+        id: randomUUID(),
+        to: invite.email,
+        magicLinkUrl: `/auth/magic-link?token=${magicLink.token}`,
+      });
+      sendHtml(response, 200, renderCheckEmailPage());
+      return;
+    }
+
     if (request.method === 'POST' && url.pathname === '/sign-in') {
       const form = await readFormBody(request);
       const email = String(form.get('email') ?? '').trim().toLowerCase();
@@ -165,8 +222,25 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      const session = await store.createSession(magicLink.memberId);
-      redirect(response, magicLink.returnTo ?? '/inventory', {
+      let memberId = magicLink.memberId;
+      let redirectPath = magicLink.returnTo ?? '/inventory';
+
+      if (magicLink.inviteToken) {
+        const invite = await store.findInvite(magicLink.inviteToken);
+
+        if (!invite || new Date(invite.expiresAt).getTime() <= Date.now()) {
+          sendHtml(response, 200, renderInviteErrorPage());
+          return;
+        }
+
+        const member = await store.createMember(invite.workspaceId, invite.email);
+        await store.markInviteAccepted(invite.token, new Date().toISOString());
+        memberId = member.id;
+        redirectPath = invite.returnTo ?? redirectPath;
+      }
+
+      const session = await store.createSession(memberId);
+      redirect(response, redirectPath, {
         'set-cookie': `session=${session.id}; Path=/; HttpOnly; SameSite=Lax`,
       });
       return;

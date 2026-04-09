@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer } from '../../src/app.js';
@@ -16,6 +16,9 @@ export async function createTestServer(options = {}) {
   return {
     baseUrl,
     server,
+    async readData() {
+      return JSON.parse(await readFile(join(dataDir, 'data.json'), 'utf8'));
+    },
     async close() {
       await server.close();
       await rm(dataDir, { recursive: true, force: true });
