@@ -1,4 +1,4 @@
-import { findActiveBoxByCode, getBoxCodeFromPath, getBoxPath } from './box-utils.js';
+import { findViewableBoxByCode, getBoxCodeFromPath, getBoxPath } from './box-utils.js';
 
 function parseCookies(request) {
   const cookieHeader = request.headers.cookie;
@@ -40,7 +40,7 @@ export async function getPostAuthRedirectPath(store, returnToPath) {
   }
 
   const boxCode = getBoxCodeFromPath(validatedPath);
-  const box = await findActiveBoxByCode(store, boxCode);
+  const box = await findViewableBoxByCode(store, boxCode);
 
   if (!box) {
     return '/inventory';

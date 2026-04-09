@@ -1,15 +1,8 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
-import QRCode from 'qrcode';
 import { createDataStore } from './data-store.js';
-import {
-  findActiveBoxByCode,
-  findActiveWorkspaceBox,
-  getBoxCodeFromPath,
-  getBoxPath,
-  getQrPath,
-} from './box-utils.js';
-import { handleCreateBoxItemRequest, handleDeleteBoxItemRequest, handleGetBoxPageRequest, handleUpdateBoxItemRequest, handleUpdateBoxRequest } from './box-page-handlers.js';
+import { getBoxPath } from './box-utils.js';
+import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -70,163 +63,50 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'GET' && /^\/q\/[^/]+$/.test(url.pathname)) {
-      const { workspace } = await getRequestContext(store, request);
-
-      if (!workspace) {
-        redirect(response, `/sign-in?returnTo=${encodeURIComponent(url.pathname)}`);
-        return;
-      }
-
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveBoxByCode(store, boxCode);
-
-      if (!box || box.workspaceId !== workspace.id) {
-        sendHtml(response, 404, renderBoxNotFoundPage());
-        return;
-      }
-
-      redirect(response, getBoxPath(box.boxCode));
+      await handleQrBoxRequest({
+        store,
+        request,
+        response,
+        pathname: url.pathname,
+        getRequestContext,
+        redirect,
+        sendHtml,
+        renderBoxNotFoundPage,
+      });
       return;
     }
 
     if (request.method === 'GET' && /^\/boxes\/[^/]+\/label$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
-
-      if (!box) {
-        sendNotFound(response);
-        return;
-      }
-
-      const qrTarget = `${normalizeBaseUrl(resolvedBaseUrl)}${getQrPath(box.boxCode)}`;
-      const qrSvg = await QRCode.toString(qrTarget, { type: 'svg', errorCorrectionLevel: 'H', margin: 1 });
-
-      sendHtml(response, 200, renderLabelPage(box, { qrSvg, qrTarget }));
-      return;
-    }
-
-    if (request.method === 'POST' && /^\/boxes\/[^/]+\/items$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      await handleCreateBoxItemRequest({
+      await handleLabelPageRequest({
         store,
-        workspaceId: workspace.id,
-        pathname: url.pathname,
         request,
         response,
-        readFormBody,
-        sendHtml,
+        pathname: url.pathname,
+        requireWorkspace,
         redirect,
+        sendHtml,
         sendNotFound,
+        renderLabelPage,
+        normalizeBaseUrl,
+        resolvedBaseUrl,
       });
       return;
     }
 
-    if (/^\/boxes\/[^/]+\/items\/[^/]+$/.test(url.pathname) && ['PATCH', 'POST'].includes(request.method)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      const form = request.method === 'POST' ? await readFormBody(request) : null;
-
-      if (request.method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
-        sendNotFound(response);
-        return;
-      }
-
-      const [, , boxCode, , itemId] = url.pathname.split('/');
-      await handleUpdateBoxItemRequest({
+    if (
+      await handleBoxRoutes({
         store,
-        workspaceId: workspace.id,
-        pathname: `/boxes/${boxCode}`,
-        itemId,
         request,
         response,
+        pathname: url.pathname,
+        method: request.method,
+        requireWorkspace,
+        redirect,
         readFormBody,
         sendHtml,
-        redirect,
         sendNotFound,
-        form,
-      });
-      return;
-    }
-
-    if (request.method === 'POST' && /^\/boxes\/[^/]+\/items\/[^/]+\/delete$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      const [, , boxCode, , itemId] = url.pathname.split('/');
-      await handleDeleteBoxItemRequest({
-        store,
-        workspaceId: workspace.id,
-        pathname: `/boxes/${boxCode}`,
-        itemId,
-        response,
-        redirect,
-        sendNotFound,
-      });
-      return;
-    }
-
-    if (/^\/boxes\/[^/]+$/.test(url.pathname) && ['PATCH', 'POST'].includes(request.method)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      const form = request.method === 'POST' ? await readFormBody(request) : null;
-
-      if (request.method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
-        sendNotFound(response);
-        return;
-      }
-
-      await handleUpdateBoxRequest({
-        store,
-        workspaceId: workspace.id,
-        pathname: url.pathname,
-        request,
-        response,
-        readFormBody,
-        sendHtml,
-        redirect,
-        sendNotFound,
-        form,
-      });
-      return;
-    }
-
-    if (request.method === 'GET' && /^\/boxes\/[^/]+$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response, redirect);
-
-      if (!workspace) {
-        return;
-      }
-
-      await handleGetBoxPageRequest({
-        store,
-        workspaceId: workspace.id,
-        pathname: url.pathname,
-        response,
-        sendHtml,
-        sendNotFound,
-      });
+      })
+    ) {
       return;
     }
 
