@@ -1,4 +1,5 @@
 import { renderBoxItemsSection } from './box-page-view.js';
+import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH, getBoxEditValues } from './box-details.js';
 
 function renderPage({ title, head = '', body }) {
   return `<!doctype html>
@@ -96,6 +97,63 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
   });
 }
 
+function renderBoxEditSection(box, boxValues = {}, boxErrors = {}, boxOriginalValues = {}) {
+  const values = getBoxEditValues(box, boxValues);
+  const originalValues = getBoxEditValues(box, boxOriginalValues);
+  const structuredLocationAttributes = values.locationMode === 'structured' ? 'data-structured-location-fields' : 'data-structured-location-fields hidden';
+
+  return `<section>
+          <h2>Edit box details</h2>
+          <form method="post" action="/boxes/${encodeURIComponent(box.boxCode)}">
+            <label>
+              Box name
+              <input type="text" name="name" maxlength="80" value="${escapeHtml(values.name)}" required />
+            </label>
+            ${boxErrors.name ? `<p>${escapeHtml(boxErrors.name)}</p>` : ''}
+            <label>
+              Location
+              <input type="text" name="location" value="${escapeHtml(values.location)}" />
+            </label>
+            <button type="button" data-expand-structured-location>Use structured location</button>
+            <div ${structuredLocationAttributes}>
+              <label>
+                Site or building
+                <input type="text" name="locationSite" value="${escapeHtml(values.locationSite)}" />
+              </label>
+              <label>
+                Room
+                <input type="text" name="locationRoom" value="${escapeHtml(values.locationRoom)}" />
+              </label>
+              <label>
+                Storage area
+                <input type="text" name="locationArea" value="${escapeHtml(values.locationArea)}" />
+              </label>
+              <label>
+                Shelf or position
+                <input type="text" name="locationShelf" value="${escapeHtml(values.locationShelf)}" />
+              </label>
+            </div>
+            <label>
+              Notes
+              <textarea name="notes" maxlength="1000">${escapeHtml(values.notes)}</textarea>
+            </label>
+            ${boxErrors.notes ? `<p>${escapeHtml(boxErrors.notes)}</p>` : ''}
+            <p data-notes-remaining>${1000 - values.notes.length} characters remaining</p>
+            <input type="hidden" name="locationMode" value="${escapeHtml(values.locationMode)}" />
+            <input type="hidden" name="originalBoxName" value="${escapeHtml(originalValues.name)}" />
+            <input type="hidden" name="originalBoxLocation" value="${escapeHtml(originalValues.location)}" />
+            <input type="hidden" name="originalBoxNotes" value="${escapeHtml(originalValues.notes)}" />
+            <input type="hidden" name="originalBoxLocationMode" value="${escapeHtml(originalValues.locationMode)}" />
+            <input type="hidden" name="originalBoxLocationSite" value="${escapeHtml(originalValues.locationSite)}" />
+            <input type="hidden" name="originalBoxLocationRoom" value="${escapeHtml(originalValues.locationRoom)}" />
+            <input type="hidden" name="originalBoxLocationArea" value="${escapeHtml(originalValues.locationArea)}" />
+            <input type="hidden" name="originalBoxLocationShelf" value="${escapeHtml(originalValues.locationShelf)}" />
+            <input type="hidden" name="_method" value="PATCH" />
+            <button type="submit">Save box details</button>
+          </form>
+        </section>`;
+}
+
 export function renderBoxPage(
   box,
   {
@@ -111,6 +169,11 @@ export function renderBoxPage(
     conflictItemId = '',
     conflictItem = null,
     removedItemMessage = '',
+    boxValues = {},
+    boxErrors = {},
+    boxWarning = '',
+    boxOriginalValues = {},
+    conflictBox = null,
   } = {},
 ) {
   const name = escapeHtml(itemValues.name ?? '');
@@ -128,9 +191,24 @@ export function renderBoxPage(
     conflictItem,
     escapeHtml,
   });
+  const boxEditSection = renderBoxEditSection(box, boxValues, boxErrors, boxOriginalValues);
 
   return renderPage({
     title: box.name,
+    head: `
+      <script>
+        document.addEventListener('input', (event) => {
+          const notesField = event.target.closest('textarea[name="notes"]');
+          const counter = notesField?.form?.querySelector('[data-notes-remaining]');
+
+          if (!notesField || !counter) {
+            return;
+          }
+
+          counter.textContent = String(1000 - notesField.value.length) + ' characters remaining';
+        });
+      </script>
+    `,
     body: `
       <main>
         <p><a href="/inventory">Inventory</a></p>
@@ -140,6 +218,9 @@ export function renderBoxPage(
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
         ${box.notes ? `<p><strong>Notes</strong>: ${escapeHtml(box.notes)}</p>` : ''}
         ${removedItemMessage ? `<p>${escapeHtml(removedItemMessage)}</p>` : ''}
+        ${boxWarning ? `<p>${escapeHtml(boxWarning)}</p>` : ''}
+        ${conflictBox ? `<div><p>This box was updated by someone else.</p><p>Latest saved box: ${escapeHtml(conflictBox.name)}${conflictBox.locationSummary ? ` · Location: ${escapeHtml(conflictBox.locationSummary)}` : ''}${conflictBox.notes ? ` · Notes: ${escapeHtml(conflictBox.notes)}` : ''}</p></div>` : ''}
+        ${boxEditSection}
         ${itemList}
         <section>
           <h2>Add item</h2>
@@ -260,12 +341,12 @@ export function validateBoxInput({ name, notes }) {
 
   if (!name) {
     errors.name = 'Enter a box name.';
-  } else if (name.length > 80) {
-    errors.name = 'Box name must be 80 characters or fewer.';
+  } else if (name.length > MAX_BOX_NAME_LENGTH) {
+    errors.name = `Box name must be ${MAX_BOX_NAME_LENGTH} characters or fewer.`;
   }
 
-  if (notes.length > 1000) {
-    errors.notes = 'Notes must be 1000 characters or fewer.';
+  if (notes.length > MAX_BOX_NOTES_LENGTH) {
+    errors.notes = `Notes must be ${MAX_BOX_NOTES_LENGTH} characters or fewer.`;
   }
 
   return errors;

@@ -1,5 +1,6 @@
 import { findActiveWorkspaceBox, getBoxCodeFromPath, getBoxPath } from './box-utils.js';
-import { renderBoxPage } from './pages.js';
+import { getBoxDetailsValues, getBoxEditValues, getOriginalBoxDetailsValues, getStoredBoxDetails, hasSimilarBoxName } from './box-details.js';
+import { renderBoxPage, validateBoxInput } from './pages.js';
 import { validateItemInput } from './item-utils.js';
 import { getBoxPageOptions, getCreateItemInput, getItemValues, getOriginalItemValues, getUpdateItemInput, isBoxAtItemLimit } from './box-items.js';
 
@@ -143,6 +144,61 @@ export async function handleDeleteBoxItemRequest({
   }
 
   redirect(response, getBoxPath(box.boxCode));
+}
+
+export async function handleUpdateBoxRequest({
+  store,
+  workspaceId,
+  pathname,
+  request,
+  response,
+  readFormBody,
+  sendHtml,
+  redirect,
+  sendNotFound,
+  form,
+}) {
+  const box = await findWorkspaceBox(store, workspaceId, pathname);
+
+  if (!box) {
+    sendNotFound(response);
+    return;
+  }
+
+  const resolvedForm = form ?? (await readFormBody(request));
+  const boxValues = getBoxDetailsValues(resolvedForm);
+  const originalBoxValues =
+    resolvedForm.has('originalBoxName') || resolvedForm.has('originalBoxLocation') || resolvedForm.has('originalBoxNotes')
+      ? getOriginalBoxDetailsValues(resolvedForm)
+      : getBoxEditValues(box);
+  const errors = validateBoxInput(boxValues);
+  const boxPageOptions = await getBoxPageOptions(store, box);
+
+  if (Object.keys(errors).length > 0) {
+    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, boxValues, boxErrors: errors, boxOriginalValues: originalBoxValues }));
+    return;
+  }
+
+  const updateResult = await store.updateBox(box.id, getStoredBoxDetails(boxValues), getStoredBoxDetails(originalBoxValues));
+
+  if (updateResult.status === 'conflict') {
+    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, boxValues, boxOriginalValues: originalBoxValues, conflictBox: updateResult.box }));
+    return;
+  }
+
+  const updatedBox = updateResult.box;
+  const workspaceBoxes = await store.listBoxesForWorkspace(workspaceId);
+
+  if (hasSimilarBoxName(workspaceBoxes, updatedBox.id, updatedBox.name)) {
+    const updatedBoxPageOptions = await getBoxPageOptions(store, updatedBox, {
+      boxValues: getBoxEditValues(updatedBox),
+      boxWarning: 'Another box already has a similar name.',
+    });
+    sendHtml(response, 200, renderBoxPage(updatedBox, updatedBoxPageOptions));
+    return;
+  }
+
+  redirect(response, getBoxPath(updatedBox.boxCode));
 }
 
 export async function handleGetBoxPageRequest({ store, workspaceId, pathname, response, sendHtml, sendNotFound }) {

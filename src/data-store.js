@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { getStoredBoxDetailsFromBox } from './box-details.js';
 import { MAX_ITEMS_PER_BOX } from './item-utils.js';
 
 function createEmptyData() {
@@ -141,6 +142,48 @@ export async function createDataStore(dataDir, seedData = {}) {
     async findBoxByCode(boxCode) {
       const data = await readData();
       return data.boxes.find((box) => box.boxCode === boxCode) ?? null;
+    },
+
+    async updateBox(boxId, input, originalInput = input) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const box = data.boxes.find((record) => record.id === boxId);
+
+        if (!box) {
+          return { status: 'deleted' };
+        }
+
+        const currentBoxDetails = getStoredBoxDetailsFromBox(box);
+        const currentStructuredLocation = currentBoxDetails.structuredLocation ?? { site: '', room: '', area: '', shelf: '' };
+        const originalStructuredLocation = originalInput.structuredLocation ?? { site: '', room: '', area: '', shelf: '' };
+        const inputStructuredLocation = input.structuredLocation ?? { site: '', room: '', area: '', shelf: '' };
+        const changedFields = ['name', 'notes', 'locationMode', 'simpleLocation'].filter((field) => input[field] !== originalInput[field]);
+        const changedStructuredFields = ['site', 'room', 'area', 'shelf'].filter(
+          (field) => inputStructuredLocation[field] !== originalStructuredLocation[field],
+        );
+        const hasConflict =
+          changedFields.some((field) => currentBoxDetails[field] !== originalInput[field]) ||
+          changedStructuredFields.some((field) => currentStructuredLocation[field] !== originalStructuredLocation[field]);
+
+        if (hasConflict) {
+          return {
+            status: 'conflict',
+            box: { ...box },
+          };
+        }
+
+        Object.assign(box, input);
+        await writeData(data);
+        return {
+          status: 'updated',
+          box: { ...box },
+        };
+      });
+    },
+
+    async listBoxesForWorkspace(workspaceId) {
+      const data = await readData();
+      return data.boxes.filter((box) => box.workspaceId === workspaceId && box.status === 'active');
     },
 
     async listItemsForBox(boxId) {
