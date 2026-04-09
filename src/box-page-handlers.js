@@ -80,7 +80,17 @@ export async function handleUpdateBoxItemRequest({
   const boxPageOptions = await getBoxPageOptions(store, box);
 
   if (Object.keys(errors).length > 0) {
-    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, editItemId: itemId, editItemValues: itemValues, editItemErrors: errors }));
+    sendHtml(
+      response,
+      200,
+      renderBoxPage(box, {
+        ...boxPageOptions,
+        editItemId: itemId,
+        editItemValues: itemValues,
+        editItemErrors: errors,
+        editOriginalItemValues: originalItemValues,
+      }),
+    );
     return;
   }
 
