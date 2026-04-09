@@ -7,5 +7,8 @@
     "start": "node src/server.js",
     "test": "node --test test/*.spec.js",
     "check": "npm test"
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

@@ -1,10 +1,11 @@
-function renderPage({ title, body }) {
+function renderPage({ title, head = '', body }) {
   return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}</title>
+    ${head}
   </head>
   <body>
     ${body}
@@ -92,16 +93,73 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
   });
 }
 
-export function renderBoxPage(box) {
+export function renderBoxPage(box, { labelPath = `/boxes/${encodeURIComponent(box.boxCode)}/label` } = {}) {
   return renderPage({
     title: box.name,
     body: `
       <main>
         <p><a href="/inventory">Inventory</a></p>
+        <p><a href="${escapeHtml(labelPath)}">Print label</a></p>
         <h1>${escapeHtml(box.name)}</h1>
         <p><strong>Box code</strong>: ${escapeHtml(box.boxCode)}</p>
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
         ${box.notes ? `<p><strong>Notes</strong>: ${escapeHtml(box.notes)}</p>` : ''}
+      </main>
+    `,
+  });
+}
+
+export function renderLabelPage(box, { qrSvg, qrTarget }) {
+  const name = box.name ? `<p><strong>Name</strong>: ${escapeHtml(box.name)}</p>` : '';
+  const location = box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : '';
+
+  return renderPage({
+    title: `Print label ${box.boxCode}`,
+    head: `
+      <style>
+        body {
+          margin: 0;
+          font-family: Arial, sans-serif;
+        }
+
+        main {
+          padding: 16px;
+        }
+
+        section {
+          width: 320px;
+        }
+
+        svg {
+          display: block;
+          width: 100%;
+          height: auto;
+        }
+
+        p {
+          margin: 8px 0 0;
+          overflow-wrap: anywhere;
+        }
+
+        @media print {
+          body {
+            margin: 0;
+          }
+
+          main {
+            padding: 0;
+          }
+        }
+      </style>
+    `,
+    body: `
+      <main>
+        <section>
+          <div data-qr-target="${escapeHtml(qrTarget)}">${qrSvg}</div>
+          <p><strong>Box code</strong>: ${escapeHtml(box.boxCode)}</p>
+          ${name}
+          ${location}
+        </section>
       </main>
     `,
   });
