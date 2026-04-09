@@ -162,14 +162,6 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'GET' && /^\/q\/[^/]+$/.test(url.pathname)) {
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveBoxByCode(store, boxCode);
-
-      if (!box) {
-        sendHtml(response, 404, renderBoxNotFoundPage());
-        return;
-      }
-
       const { workspace } = await getRequestContext(store, request);
 
       if (!workspace) {
@@ -177,7 +169,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      if (box.workspaceId !== workspace.id) {
+      const boxCode = getBoxCodeFromPath(url.pathname);
+      const box = await findActiveBoxByCode(store, boxCode);
+
+      if (!box || box.workspaceId !== workspace.id) {
         sendHtml(response, 404, renderBoxNotFoundPage());
         return;
       }

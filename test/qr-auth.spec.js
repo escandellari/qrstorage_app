@@ -42,6 +42,36 @@ test('GET /q/:boxCode while signed out redirects to sign-in, preserves return-to
   }
 });
 
+test('GET /q/:boxCode while signed out redirects to sign-in even when the box is invalid or deleted', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-9',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0999',
+          name: 'Private Papers',
+          locationSummary: 'Office cabinet',
+          notes: 'Bank details inside.',
+          status: 'deleted',
+        },
+      ],
+    },
+  });
+
+  try {
+    for (const path of ['/q/not-a-real-code', '/q/BOX-0999']) {
+      const response = await fetch(`${app.baseUrl}${path}`, { redirect: 'manual' });
+
+      assert.equal(response.status, 302);
+      assert.equal(response.headers.get('location'), `/sign-in?returnTo=${encodeURIComponent(path)}`);
+    }
+  } finally {
+    await app.close();
+  }
+});
+
 test('signing in from the QR flow returns the member to the scanned box page', async () => {
   const app = await createTestServer({
     seedData: {

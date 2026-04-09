@@ -44,7 +44,7 @@ test('GET /q/:boxCode for a signed-in member redirects to the matching box page'
   }
 });
 
-test('GET /q/:boxCode shows the same neutral not-found screen for invalid and deleted boxes', async () => {
+test('GET /q/:boxCode shows the same neutral not-found screen for invalid and deleted boxes to signed-in members', async () => {
   const app = await createTestServer({
     seedData: {
       ...defaultSeedData,
@@ -63,8 +63,13 @@ test('GET /q/:boxCode shows the same neutral not-found screen for invalid and de
   });
 
   try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+
     for (const path of ['/q/not-a-real-code', '/q/BOX-0999']) {
-      const response = await fetch(`${app.baseUrl}${path}`, { redirect: 'manual' });
+      const response = await fetch(`${app.baseUrl}${path}`, {
+        redirect: 'manual',
+        headers: { cookie: sessionCookie },
+      });
       const html = await response.text();
 
       assert.equal(response.status, 404);
