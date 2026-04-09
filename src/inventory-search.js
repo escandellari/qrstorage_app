@@ -50,12 +50,13 @@ function createPreview(label, value) {
 export async function searchInventory(store, workspaceId, { query, includeArchived = false, offset = 0 } = {}) {
   const trimmedQuery = String(query ?? '').trim();
   const normalisedQuery = normalise(trimmedQuery);
+  const safeOffset = Math.max(0, Number.isFinite(offset) ? Math.trunc(offset) : 0);
 
   if (!normalisedQuery) {
     return {
       query: trimmedQuery,
       includeArchived,
-      offset,
+      offset: safeOffset,
       limit: PAGE_SIZE,
       total: 0,
       hasMore: false,
@@ -127,15 +128,15 @@ export async function searchInventory(store, workspaceId, { query, includeArchiv
     return left.boxCode.localeCompare(right.boxCode) || left.itemName.localeCompare(right.itemName) || left.preview.localeCompare(right.preview);
   });
 
-  const results = matches.slice(offset, offset + PAGE_SIZE);
+  const results = matches.slice(safeOffset, safeOffset + PAGE_SIZE);
 
   return {
     query: trimmedQuery,
     includeArchived,
-    offset,
+    offset: safeOffset,
     limit: PAGE_SIZE,
     total: matches.length,
-    hasMore: offset + PAGE_SIZE < matches.length,
+    hasMore: safeOffset + PAGE_SIZE < matches.length,
     results,
   };
 }
