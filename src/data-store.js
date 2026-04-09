@@ -7,6 +7,7 @@ function createEmptyData() {
     workspaces: [],
     members: [],
     boxes: [],
+    items: [],
     magicLinks: [],
     sessions: [],
   };
@@ -19,6 +20,7 @@ export async function createDataStore(dataDir, seedData = {}) {
     ...createEmptyData(),
     ...seedData,
     boxes: seedData.boxes ?? [],
+    items: seedData.items ?? [],
     magicLinks: seedData.magicLinks ?? [],
     sessions: seedData.sessions ?? [],
   };
@@ -135,6 +137,28 @@ export async function createDataStore(dataDir, seedData = {}) {
     async findBoxByCode(boxCode) {
       const data = await readData();
       return data.boxes.find((box) => box.boxCode === boxCode) ?? null;
+    },
+
+    async listItemsForBox(boxId) {
+      const data = await readData();
+      return data.items.filter((item) => item.boxId === boxId);
+    },
+
+    async createItem(boxId, { name, quantity = null, category = '', notes = '' }) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const item = {
+          id: randomUUID(),
+          boxId,
+          name,
+          quantity,
+          category,
+          notes,
+        };
+        data.items.push(item);
+        await writeData(data);
+        return item;
+      });
     },
   };
 }
