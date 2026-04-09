@@ -57,13 +57,14 @@ export async function createDataStore(dataDir, seedData = {}) {
       return data.workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
     },
 
-    async createMagicLink(email, memberId, expiresAt) {
+    async createMagicLink(email, memberId, expiresAt, returnTo = '/inventory') {
       const data = await readData();
       const record = {
         token: randomUUID(),
         email,
         memberId,
         expiresAt,
+        returnTo,
         consumedAt: null,
       };
       data.magicLinks.push(record);

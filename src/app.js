@@ -3,6 +3,15 @@ import { randomUUID } from 'node:crypto';
 import QRCode from 'qrcode';
 import { createDataStore } from './data-store.js';
 import {
+  findActiveBoxByCode,
+  findActiveWorkspaceBox,
+  getBoxCodeFromPath,
+  getBoxPath,
+  getLabelPath,
+  getQrPath,
+} from './box-utils.js';
+import {
+  renderBoxNotFoundPage,
   renderBoxPage,
   renderCheckEmailPage,
   renderInventoryPage,
@@ -34,31 +43,6 @@ function normalizeBaseUrl(baseUrl) {
   return String(baseUrl).replace(/\/$/, '');
 }
 
-function getBoxPath(boxCode) {
-  return `/boxes/${encodeURIComponent(boxCode)}`;
-}
-
-function getLabelPath(boxCode) {
-  return `${getBoxPath(boxCode)}/label`;
-}
-
-function getBoxUrl(baseUrl, boxCode) {
-  return `${normalizeBaseUrl(baseUrl)}${getBoxPath(boxCode)}`;
-}
-
-function getBoxCodeFromPath(pathname) {
-  return decodeURIComponent(pathname.split('/')[2] ?? '');
-}
-
-async function findWorkspaceBox(store, workspaceId, boxCode) {
-  const box = await store.findBoxByCode(boxCode);
-
-  if (!box || box.workspaceId !== workspaceId) {
-    return null;
-  }
-
-  return box;
-}
 
 async function readFormBody(request) {
   const chunks = [];
@@ -92,6 +76,31 @@ async function getRequestContext(store, request) {
   const workspace = member ? await store.findWorkspaceById(member.workspaceId) : null;
 
   return { session, member, workspace };
+}
+
+function getValidatedReturnToPath(pathname) {
+  if (!/^\/q\/[^/]+$/.test(pathname)) {
+    return '';
+  }
+
+  return pathname;
+}
+
+async function getPostAuthRedirectPath(store, returnToPath) {
+  const validatedPath = getValidatedReturnToPath(returnToPath);
+
+  if (!validatedPath) {
+    return '/inventory';
+  }
+
+  const boxCode = getBoxCodeFromPath(validatedPath.replace('/q/', '/boxes/'));
+  const box = await findActiveBoxByCode(store, boxCode);
+
+  if (!box) {
+    return '/inventory';
+  }
+
+  return getBoxPath(box.boxCode);
 }
 
 async function requireWorkspace(store, request, response) {
@@ -152,6 +161,31 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
+    if (request.method === 'GET' && /^\/q\/[^/]+$/.test(url.pathname)) {
+      const boxCode = getBoxCodeFromPath(url.pathname.replace('/q/', '/boxes/'));
+      const box = await findActiveBoxByCode(store, boxCode);
+
+      if (!box) {
+        sendHtml(response, 404, renderBoxNotFoundPage());
+        return;
+      }
+
+      const { workspace } = await getRequestContext(store, request);
+
+      if (!workspace) {
+        redirect(response, `/sign-in?returnTo=${encodeURIComponent(url.pathname)}`);
+        return;
+      }
+
+      if (box.workspaceId !== workspace.id) {
+        sendHtml(response, 404, renderBoxNotFoundPage());
+        return;
+      }
+
+      redirect(response, getBoxPath(box.boxCode));
+      return;
+    }
+
     if (request.method === 'GET' && /^\/boxes\/[^/]+\/label$/.test(url.pathname)) {
       const workspace = await requireWorkspace(store, request, response);
 
@@ -160,14 +194,14 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       }
 
       const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findWorkspaceBox(store, workspace.id, boxCode);
+      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
 
       if (!box) {
         sendNotFound(response);
         return;
       }
 
-      const qrTarget = getBoxUrl(resolvedBaseUrl, box.boxCode);
+      const qrTarget = `${normalizeBaseUrl(resolvedBaseUrl)}${getQrPath(box.boxCode)}`;
       const qrSvg = await QRCode.toString(qrTarget, { type: 'svg', errorCorrectionLevel: 'H', margin: 1 });
 
       sendHtml(response, 200, renderLabelPage(box, { qrSvg, qrTarget }));
@@ -182,7 +216,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       }
 
       const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findWorkspaceBox(store, workspace.id, boxCode);
+      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
 
       if (!box) {
         sendNotFound(response);
@@ -194,7 +228,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'GET' && url.pathname === '/sign-in') {
-      sendHtml(response, 200, renderSignInPage());
+      const returnTo = getValidatedReturnToPath(url.searchParams.get('returnTo') ?? '');
+      const message = returnTo ? 'Access is required. Sign in to continue.' : 'Enter your email to continue.';
+
+      sendHtml(response, 200, renderSignInPage({ returnTo, message }));
       return;
     }
 
@@ -202,9 +239,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       const form = await readFormBody(request);
       const email = String(form.get('email') ?? '').trim().toLowerCase();
       const member = email ? await store.findMemberByEmail(email) : null;
+      const returnTo = await getPostAuthRedirectPath(store, String(form.get('returnTo') ?? ''));
 
       if (member) {
-        const magicLink = await store.createMagicLink(email, member.id, new Date(Date.now() + 15 * 60 * 1000).toISOString());
+        const magicLink = await store.createMagicLink(email, member.id, new Date(Date.now() + 15 * 60 * 1000).toISOString(), returnTo);
         sentEmails.push({
           id: randomUUID(),
           to: email,
@@ -226,7 +264,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       }
 
       const session = await store.createSession(magicLink.memberId);
-      redirect(response, '/inventory', {
+      redirect(response, magicLink.returnTo ?? '/inventory', {
         'set-cookie': `session=${session.id}; Path=/; HttpOnly; SameSite=Lax`,
       });
       return;
