@@ -6,6 +6,7 @@ function createEmptyData() {
   return {
     workspaces: [],
     members: [],
+    boxes: [],
     magicLinks: [],
     sessions: [],
   };
@@ -17,6 +18,7 @@ export async function createDataStore(dataDir, seedData = {}) {
   const initialData = {
     ...createEmptyData(),
     ...seedData,
+    boxes: seedData.boxes ?? [],
     magicLinks: seedData.magicLinks ?? [],
     sessions: seedData.sessions ?? [],
   };
@@ -108,6 +110,30 @@ export async function createDataStore(dataDir, seedData = {}) {
     async findSession(sessionId) {
       const data = await readData();
       return data.sessions.find((session) => session.id === sessionId) ?? null;
+    },
+
+    async createBox(workspaceId, { name, locationSummary, notes }) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const nextCode = `BOX-${String(data.boxes.length + 1).padStart(4, '0')}`;
+        const box = {
+          id: randomUUID(),
+          workspaceId,
+          boxCode: nextCode,
+          name,
+          locationSummary,
+          notes,
+          status: 'active',
+        };
+        data.boxes.push(box);
+        await writeData(data);
+        return box;
+      });
+    },
+
+    async findBoxByCode(boxCode) {
+      const data = await readData();
+      return data.boxes.find((box) => box.boxCode === boxCode) ?? null;
     },
   };
 }
