@@ -4,30 +4,45 @@ import { createTestServer, defaultSeedData, signInAs } from './support/test-serv
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-test('GET /boxes/:boxCode/label renders a printable label with the box code and QR payload for the permanent box URL', async () => {
-  const app = await createTestServer({
+async function createLabelTestApp(box) {
+  return createTestServer({
     seedData: {
       ...defaultSeedData,
       boxes: [
         {
           id: 'box-1',
           workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
+          notes: '',
           status: 'active',
+          ...box,
         },
       ],
     },
   });
+}
+
+async function fetchLabelHtml(app, boxCode) {
+  const sessionCookie = await signInAs(app, 'owner@example.com');
+  const response = await fetch(`${app.baseUrl}/boxes/${boxCode}/label`, {
+    headers: { cookie: sessionCookie },
+  });
+
+  return {
+    response,
+    html: await response.text(),
+  };
+}
+
+test('GET /boxes/:boxCode/label renders a printable label with the box code and QR payload for the permanent box URL', async () => {
+  const app = await createLabelTestApp({
+    boxCode: 'BOX-0042',
+    name: 'Camping Kit',
+    locationSummary: 'Garage shelf',
+    notes: 'Check stove fuel before summer.',
+  });
 
   try {
-    const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042/label`, {
-      headers: { cookie: sessionCookie },
-    });
-    const html = await response.text();
+    const { response, html } = await fetchLabelHtml(app, 'BOX-0042');
 
     assert.equal(response.status, 200);
     assert.match(html, /BOX-0042/);
@@ -41,29 +56,15 @@ test('GET /boxes/:boxCode/label renders a printable label with the box code and 
 });
 
 test('GET /boxes/:boxCode/label includes print-focused styling and shows the box name and location summary when present', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0099',
-          name: 'Winter Clothes',
-          locationSummary: 'Hall cupboard',
-          notes: 'Vacuum bags on top.',
-          status: 'active',
-        },
-      ],
-    },
+  const app = await createLabelTestApp({
+    boxCode: 'BOX-0099',
+    name: 'Winter Clothes',
+    locationSummary: 'Hall cupboard',
+    notes: 'Vacuum bags on top.',
   });
 
   try {
-    const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0099/label`, {
-      headers: { cookie: sessionCookie },
-    });
-    const html = await response.text();
+    const { response, html } = await fetchLabelHtml(app, 'BOX-0099');
 
     assert.equal(response.status, 200);
     assert.match(html, /Winter Clothes/);
@@ -75,29 +76,14 @@ test('GET /boxes/:boxCode/label includes print-focused styling and shows the box
 });
 
 test('GET /boxes/:boxCode/label omits the location line cleanly when no location summary is saved', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0100',
-          name: 'Spare Cables',
-          locationSummary: '',
-          notes: '',
-          status: 'active',
-        },
-      ],
-    },
+  const app = await createLabelTestApp({
+    boxCode: 'BOX-0100',
+    name: 'Spare Cables',
+    locationSummary: '',
   });
 
   try {
-    const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0100/label`, {
-      headers: { cookie: sessionCookie },
-    });
-    const html = await response.text();
+    const { response, html } = await fetchLabelHtml(app, 'BOX-0100');
 
     assert.equal(response.status, 200);
     assert.match(html, /Spare Cables/);
@@ -108,29 +94,14 @@ test('GET /boxes/:boxCode/label omits the location line cleanly when no location
 });
 
 test('GET /boxes/:boxCode/label keeps key identifiers present for boxes with long names', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0101',
-          name: 'Very long seasonal decorations and camping accessories box for the attic shelves',
-          locationSummary: 'Attic shelves',
-          notes: '',
-          status: 'active',
-        },
-      ],
-    },
+  const app = await createLabelTestApp({
+    boxCode: 'BOX-0101',
+    name: 'Very long seasonal decorations and camping accessories box for the attic shelves',
+    locationSummary: 'Attic shelves',
   });
 
   try {
-    const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0101/label`, {
-      headers: { cookie: sessionCookie },
-    });
-    const html = await response.text();
+    const { response, html } = await fetchLabelHtml(app, 'BOX-0101');
 
     assert.equal(response.status, 200);
     assert.match(html, /Very long seasonal decorations and camping accessories box for the attic shelves/);
@@ -142,21 +113,10 @@ test('GET /boxes/:boxCode/label keeps key identifiers present for boxes with lon
 });
 
 test('GET /boxes/:boxCode/label re-renders the same permanent box code and QR target on later requests', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0101',
-          name: 'Garden Tools',
-          locationSummary: 'Shed wall rack',
-          notes: '',
-          status: 'active',
-        },
-      ],
-    },
+  const app = await createLabelTestApp({
+    boxCode: 'BOX-0101',
+    name: 'Garden Tools',
+    locationSummary: 'Shed wall rack',
   });
 
   try {
