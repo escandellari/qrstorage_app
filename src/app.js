@@ -7,12 +7,11 @@ import {
   findActiveWorkspaceBox,
   getBoxCodeFromPath,
   getBoxPath,
-  getLabelPath,
   getQrPath,
 } from './box-utils.js';
+import { handleCreateBoxItemRequest, handleGetBoxPageRequest } from './box-page-handlers.js';
 import {
   renderBoxNotFoundPage,
-  renderBoxPage,
   renderCheckEmailPage,
   renderInventoryPage,
   renderLabelPage,
@@ -20,7 +19,6 @@ import {
   renderSignInPage,
   validateBoxInput,
 } from './pages.js';
-import { ITEM_LIMIT_MESSAGE, MAX_ITEMS_PER_BOX, validateItemInput } from './item-utils.js';
 
 function sendHtml(response, statusCode, html, headers = {}) {
   response.writeHead(statusCode, {
@@ -210,50 +208,17 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
-
-      if (!box) {
-        sendNotFound(response);
-        return;
-      }
-
-      const form = await readFormBody(request);
-      const name = String(form.get('name') ?? '').trim();
-      const quantity = String(form.get('quantity') ?? '').trim();
-      const category = String(form.get('category') ?? '').trim();
-      const notes = String(form.get('notes') ?? '').trim();
-      const itemValues = { name, quantity, category, notes };
-      const errors = validateItemInput(itemValues);
-      const items = await store.listItemsForBox(box.id);
-
-      if (items.length >= MAX_ITEMS_PER_BOX) {
-        sendHtml(response, 200, renderBoxPage(box, {
-          labelPath: getLabelPath(box.boxCode),
-          items,
-          itemLimitMessage: ITEM_LIMIT_MESSAGE,
-        }));
-        return;
-      }
-
-      if (Object.keys(errors).length > 0) {
-        sendHtml(response, 200, renderBoxPage(box, {
-          labelPath: getLabelPath(box.boxCode),
-          items,
-          itemValues,
-          itemErrors: errors,
-        }));
-        return;
-      }
-
-      await store.createItem(box.id, {
-        name,
-        quantity: quantity ? Number(quantity) : null,
-        category,
-        notes,
+      await handleCreateBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: url.pathname,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
       });
-
-      redirect(response, getBoxPath(box.boxCode));
       return;
     }
 
@@ -264,20 +229,14 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
-
-      if (!box) {
-        sendNotFound(response);
-        return;
-      }
-
-      const items = await store.listItemsForBox(box.id);
-      sendHtml(response, 200, renderBoxPage(box, {
-        labelPath: getLabelPath(box.boxCode),
-        items,
-        itemLimitMessage: items.length >= MAX_ITEMS_PER_BOX ? ITEM_LIMIT_MESSAGE : '',
-      }));
+      await handleGetBoxPageRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: url.pathname,
+        response,
+        sendHtml,
+        sendNotFound,
+      });
       return;
     }
 
