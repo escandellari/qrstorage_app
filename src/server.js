@@ -6,6 +6,7 @@ const port = Number(process.env.PORT ?? 3000);
 const dataDir = process.env.DATA_DIR ?? join(process.cwd(), '.data');
 
 await mkdir(dataDir, { recursive: true });
-const server = await startServer({ dataDir, port });
+const baseUrl = process.env.APP_BASE_URL;
+const server = await startServer({ dataDir, port, baseUrl });
 
 console.log(`qrstorage_app listening on http://127.0.0.1:${server.port}`);

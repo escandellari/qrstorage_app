@@ -21,10 +21,10 @@ async function createLabelTestApp(box) {
   });
 }
 
-async function fetchLabelHtml(app, boxCode) {
+async function fetchLabelHtml(app, boxCode, headers = {}) {
   const sessionCookie = await signInAs(app, 'owner@example.com');
   const response = await fetch(`${app.baseUrl}/boxes/${boxCode}/label`, {
-    headers: { cookie: sessionCookie },
+    headers: { cookie: sessionCookie, ...headers },
   });
 
   return {
@@ -136,6 +136,37 @@ test('GET /boxes/:boxCode/label re-renders the same permanent box code and QR ta
     assert.equal(secondHtml.match(targetPattern)?.[0], expectedTarget);
     assert.match(firstHtml, /BOX-0101/);
     assert.match(secondHtml, /BOX-0101/);
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode/label uses the configured canonical base URL instead of the request Host header', async () => {
+  const secureBaseUrl = 'https://inventory.example.com';
+  const app = await createTestServer({
+    baseUrl: secureBaseUrl,
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0110',
+          name: 'Important Papers',
+          locationSummary: 'Office cabinet',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const { response, html } = await fetchLabelHtml(app, 'BOX-0110', { host: 'attacker.example.test' });
+
+    assert.equal(response.status, 200);
+    assert.match(html, new RegExp(escapeRegExp(`${secureBaseUrl}/boxes/BOX-0110`)));
+    assert.doesNotMatch(html, /attacker\.example\.test/i);
   } finally {
     await app.close();
   }

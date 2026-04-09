@@ -30,8 +30,8 @@ function sendNotFound(response) {
   response.end('Not found');
 }
 
-function getBaseUrl(request) {
-  return `http://${request.headers.host}`;
+function normalizeBaseUrl(baseUrl) {
+  return String(baseUrl).replace(/\/$/, '');
 }
 
 function getBoxPath(boxCode) {
@@ -42,8 +42,8 @@ function getLabelPath(boxCode) {
   return `${getBoxPath(boxCode)}/label`;
 }
 
-function getBoxUrl(request, boxCode) {
-  return `${getBaseUrl(request)}${getBoxPath(boxCode)}`;
+function getBoxUrl(baseUrl, boxCode) {
+  return `${normalizeBaseUrl(baseUrl)}${getBoxPath(boxCode)}`;
 }
 
 function getBoxCodeFromPath(pathname) {
@@ -105,9 +105,10 @@ async function requireWorkspace(store, request, response) {
   return workspace;
 }
 
-export async function startServer({ dataDir, port = 0, seedData } = {}) {
+export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {}) {
   const store = await createDataStore(dataDir, seedData);
   const sentEmails = [];
+  let resolvedBaseUrl = baseUrl ? normalizeBaseUrl(baseUrl) : null;
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -166,7 +167,7 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
         return;
       }
 
-      const qrTarget = getBoxUrl(request, box.boxCode);
+      const qrTarget = getBoxUrl(resolvedBaseUrl, box.boxCode);
       const qrSvg = await QRCode.toString(qrTarget, { type: 'svg', errorCorrectionLevel: 'H', margin: 1 });
 
       sendHtml(response, 200, renderLabelPage(box, { qrSvg, qrTarget }));
@@ -235,6 +236,7 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
   });
 
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+  resolvedBaseUrl ??= `http://127.0.0.1:${server.address().port}`;
 
   return {
     port: server.address().port,
