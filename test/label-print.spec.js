@@ -1,0 +1,182 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+test('GET /boxes/:boxCode/label renders a printable label with the box code and QR payload for the permanent box URL', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0042',
+          name: 'Camping Kit',
+          locationSummary: 'Garage shelf',
+          notes: 'Check stove fuel before summer.',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042/label`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /BOX-0042/);
+    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/boxes/BOX-0042`)));
+    assert.match(html, /<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/i);
+    assert.doesNotMatch(html, />Inventory</i);
+    assert.doesNotMatch(html, />Print label</i);
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode/label includes print-focused styling and shows the box name and location summary when present', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0099',
+          name: 'Winter Clothes',
+          locationSummary: 'Hall cupboard',
+          notes: 'Vacuum bags on top.',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0099/label`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /Winter Clothes/);
+    assert.match(html, /Hall cupboard/);
+    assert.match(html, /@media print/);
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode/label omits the location line cleanly when no location summary is saved', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0100',
+          name: 'Spare Cables',
+          locationSummary: '',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0100/label`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /Spare Cables/);
+    assert.doesNotMatch(html, /<strong>Location<\/strong>/i);
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode/label keeps key identifiers present for boxes with long names', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0101',
+          name: 'Very long seasonal decorations and camping accessories box for the attic shelves',
+          locationSummary: 'Attic shelves',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0101/label`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /Very long seasonal decorations and camping accessories box for the attic shelves/);
+    assert.match(html, /BOX-0101/);
+    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/boxes/BOX-0101`)));
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode/label re-renders the same permanent box code and QR target on later requests', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0101',
+          name: 'Garden Tools',
+          locationSummary: 'Shed wall rack',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const labelUrl = `${app.baseUrl}/boxes/BOX-0101/label`;
+    const [firstResponse, secondResponse] = await Promise.all([
+      fetch(labelUrl, { headers: { cookie: sessionCookie } }),
+      fetch(labelUrl, { headers: { cookie: sessionCookie } }),
+    ]);
+    const [firstHtml, secondHtml] = await Promise.all([firstResponse.text(), secondResponse.text()]);
+    const expectedTarget = `${app.baseUrl}/boxes/BOX-0101`;
+    const targetPattern = new RegExp(escapeRegExp(expectedTarget), 'g');
+
+    assert.equal(firstResponse.status, 200);
+    assert.equal(secondResponse.status, 200);
+    assert.equal(firstHtml.match(targetPattern)?.[0], expectedTarget);
+    assert.equal(secondHtml.match(targetPattern)?.[0], expectedTarget);
+    assert.match(firstHtml, /BOX-0101/);
+    assert.match(secondHtml, /BOX-0101/);
+  } finally {
+    await app.close();
+  }
+});

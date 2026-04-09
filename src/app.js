@@ -1,10 +1,12 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import QRCode from 'qrcode';
 import { createDataStore } from './data-store.js';
 import {
   renderBoxPage,
   renderCheckEmailPage,
   renderInventoryPage,
+  renderLabelPage,
   renderMagicLinkErrorPage,
   renderSignInPage,
   validateBoxInput,
@@ -26,6 +28,36 @@ function redirect(response, location, headers = {}) {
 function sendNotFound(response) {
   response.writeHead(404);
   response.end('Not found');
+}
+
+function getBaseUrl(request) {
+  return `http://${request.headers.host}`;
+}
+
+function getBoxPath(boxCode) {
+  return `/boxes/${encodeURIComponent(boxCode)}`;
+}
+
+function getLabelPath(boxCode) {
+  return `${getBoxPath(boxCode)}/label`;
+}
+
+function getBoxUrl(request, boxCode) {
+  return `${getBaseUrl(request)}${getBoxPath(boxCode)}`;
+}
+
+function getBoxCodeFromPath(pathname) {
+  return decodeURIComponent(pathname.split('/')[2] ?? '');
+}
+
+async function findWorkspaceBox(store, workspaceId, boxCode) {
+  const box = await store.findBoxByCode(boxCode);
+
+  if (!box || box.workspaceId !== workspaceId) {
+    return null;
+  }
+
+  return box;
 }
 
 async function readFormBody(request) {
@@ -115,26 +147,48 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
         notes,
       });
 
-      redirect(response, `/boxes/${box.boxCode}`);
+      redirect(response, getBoxPath(box.boxCode));
       return;
     }
 
-    if (request.method === 'GET' && url.pathname.startsWith('/boxes/')) {
+    if (request.method === 'GET' && /^\/boxes\/[^/]+\/label$/.test(url.pathname)) {
       const workspace = await requireWorkspace(store, request, response);
 
       if (!workspace) {
         return;
       }
 
-      const boxCode = decodeURIComponent(url.pathname.slice('/boxes/'.length));
-      const box = await store.findBoxByCode(boxCode);
+      const boxCode = getBoxCodeFromPath(url.pathname);
+      const box = await findWorkspaceBox(store, workspace.id, boxCode);
 
-      if (!box || box.workspaceId !== workspace.id) {
+      if (!box) {
         sendNotFound(response);
         return;
       }
 
-      sendHtml(response, 200, renderBoxPage(box));
+      const qrTarget = getBoxUrl(request, box.boxCode);
+      const qrSvg = await QRCode.toString(qrTarget, { type: 'svg', errorCorrectionLevel: 'H', margin: 1 });
+
+      sendHtml(response, 200, renderLabelPage(box, { qrSvg, qrTarget }));
+      return;
+    }
+
+    if (request.method === 'GET' && /^\/boxes\/[^/]+$/.test(url.pathname)) {
+      const workspace = await requireWorkspace(store, request, response);
+
+      if (!workspace) {
+        return;
+      }
+
+      const boxCode = getBoxCodeFromPath(url.pathname);
+      const box = await findWorkspaceBox(store, workspace.id, boxCode);
+
+      if (!box) {
+        sendNotFound(response);
+        return;
+      }
+
+      sendHtml(response, 200, renderBoxPage(box, { labelPath: getLabelPath(box.boxCode) }));
       return;
     }
 
