@@ -9,7 +9,7 @@ import {
   getBoxPath,
   getQrPath,
 } from './box-utils.js';
-import { handleCreateBoxItemRequest, handleDeleteBoxItemRequest, handleGetBoxPageRequest, handleUpdateBoxItemRequest } from './box-page-handlers.js';
+import { handleCreateBoxItemRequest, handleDeleteBoxItemRequest, handleGetBoxPageRequest, handleUpdateBoxItemRequest, handleUpdateBoxRequest } from './box-page-handlers.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -179,6 +179,35 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         response,
         redirect,
         sendNotFound,
+      });
+      return;
+    }
+
+    if (/^\/boxes\/[^/]+$/.test(url.pathname) && ['PATCH', 'POST'].includes(request.method)) {
+      const workspace = await requireWorkspace(store, request, response, redirect);
+
+      if (!workspace) {
+        return;
+      }
+
+      const form = request.method === 'POST' ? await readFormBody(request) : null;
+
+      if (request.method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
+        sendNotFound(response);
+        return;
+      }
+
+      await handleUpdateBoxRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: url.pathname,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+        form,
       });
       return;
     }

@@ -1,4 +1,6 @@
+import { renderBoxConflictMessage, renderBoxEditSection, renderBoxNotesCounterScript } from './box-edit-view.js';
 import { renderBoxItemsSection } from './box-page-view.js';
+import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
 
 function renderPage({ title, head = '', body }) {
   return `<!doctype html>
@@ -111,6 +113,11 @@ export function renderBoxPage(
     conflictItemId = '',
     conflictItem = null,
     removedItemMessage = '',
+    boxValues = {},
+    boxErrors = {},
+    boxWarning = '',
+    boxOriginalValues = {},
+    conflictBox = null,
   } = {},
 ) {
   const name = escapeHtml(itemValues.name ?? '');
@@ -128,9 +135,11 @@ export function renderBoxPage(
     conflictItem,
     escapeHtml,
   });
+  const boxEditSection = renderBoxEditSection({ box, boxValues, boxErrors, boxOriginalValues, escapeHtml });
 
   return renderPage({
     title: box.name,
+    head: renderBoxNotesCounterScript(),
     body: `
       <main>
         <p><a href="/inventory">Inventory</a></p>
@@ -140,6 +149,9 @@ export function renderBoxPage(
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
         ${box.notes ? `<p><strong>Notes</strong>: ${escapeHtml(box.notes)}</p>` : ''}
         ${removedItemMessage ? `<p>${escapeHtml(removedItemMessage)}</p>` : ''}
+        ${boxWarning ? `<p>${escapeHtml(boxWarning)}</p>` : ''}
+        ${renderBoxConflictMessage(conflictBox, escapeHtml)}
+        ${boxEditSection}
         ${itemList}
         <section>
           <h2>Add item</h2>
@@ -260,12 +272,12 @@ export function validateBoxInput({ name, notes }) {
 
   if (!name) {
     errors.name = 'Enter a box name.';
-  } else if (name.length > 80) {
-    errors.name = 'Box name must be 80 characters or fewer.';
+  } else if (name.length > MAX_BOX_NAME_LENGTH) {
+    errors.name = `Box name must be ${MAX_BOX_NAME_LENGTH} characters or fewer.`;
   }
 
-  if (notes.length > 1000) {
-    errors.notes = 'Notes must be 1000 characters or fewer.';
+  if (notes.length > MAX_BOX_NOTES_LENGTH) {
+    errors.notes = `Notes must be ${MAX_BOX_NOTES_LENGTH} characters or fewer.`;
   }
 
   return errors;
