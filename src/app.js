@@ -1,20 +1,14 @@
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createDataStore } from './data-store.js';
-
-function renderPage({ title, body }) {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${title}</title>
-  </head>
-  <body>
-    ${body}
-  </body>
-</html>`;
-}
+import {
+  renderBoxPage,
+  renderCheckEmailPage,
+  renderInventoryPage,
+  renderMagicLinkErrorPage,
+  renderSignInPage,
+  validateBoxInput,
+} from './pages.js';
 
 function sendHtml(response, statusCode, html, headers = {}) {
   response.writeHead(statusCode, {
@@ -29,64 +23,9 @@ function redirect(response, location, headers = {}) {
   response.end();
 }
 
-function renderSignInPage() {
-  return renderPage({
-    title: 'Sign in',
-    body: `
-      <main>
-        <h1>Sign in</h1>
-        <p>Enter your email to continue.</p>
-        <form method="post" action="/sign-in">
-          <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required />
-          </label>
-          <button type="submit">Send magic link</button>
-        </form>
-      </main>
-    `,
-  });
-}
-
-function renderCheckEmailPage() {
-  return renderPage({
-    title: 'Check your email',
-    body: `
-      <main>
-        <h1>Check your email</h1>
-        <p>If that email can access this workspace, we have sent a magic link.</p>
-      </main>
-    `,
-  });
-}
-
-function renderInventoryPage(workspace) {
-  return renderPage({
-    title: 'Inventory',
-    body: `
-      <main>
-        <h1>Inventory</h1>
-        <p>${workspace.name}</p>
-        <section>
-          <h2>Your boxes</h2>
-          <p>No boxes yet.</p>
-        </section>
-      </main>
-    `,
-  });
-}
-
-function renderMagicLinkErrorPage() {
-  return renderPage({
-    title: 'Magic link error',
-    body: `
-      <main>
-        <h1>This link has expired</h1>
-        <p>Request a new magic link to continue.</p>
-        <p><a href="/sign-in">Request a new magic link</a></p>
-      </main>
-    `,
-  });
+function sendNotFound(response) {
+  response.writeHead(404);
+  response.end('Not found');
 }
 
 async function readFormBody(request) {
@@ -114,6 +53,26 @@ function parseCookies(request) {
   );
 }
 
+async function getRequestContext(store, request) {
+  const cookies = parseCookies(request);
+  const session = cookies.session ? await store.findSession(cookies.session) : null;
+  const member = session ? await store.findMemberById(session.memberId) : null;
+  const workspace = member ? await store.findWorkspaceById(member.workspaceId) : null;
+
+  return { session, member, workspace };
+}
+
+async function requireWorkspace(store, request, response) {
+  const { workspace } = await getRequestContext(store, request);
+
+  if (!workspace) {
+    redirect(response, '/sign-in');
+    return null;
+  }
+
+  return workspace;
+}
+
 export async function startServer({ dataDir, port = 0, seedData } = {}) {
   const store = await createDataStore(dataDir, seedData);
   const sentEmails = [];
@@ -122,17 +81,60 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
     const url = new URL(request.url, 'http://127.0.0.1');
 
     if (request.method === 'GET' && url.pathname === '/inventory') {
-      const cookies = parseCookies(request);
-      const session = cookies.session ? await store.findSession(cookies.session) : null;
-      const member = session ? await store.findMemberById(session.memberId) : null;
-      const workspace = member ? await store.findWorkspaceById(member.workspaceId) : null;
+      const workspace = await requireWorkspace(store, request, response);
 
       if (!workspace) {
-        redirect(response, '/sign-in');
         return;
       }
 
       sendHtml(response, 200, renderInventoryPage(workspace));
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/boxes') {
+      const workspace = await requireWorkspace(store, request, response);
+
+      if (!workspace) {
+        return;
+      }
+
+      const form = await readFormBody(request);
+      const name = String(form.get('name') ?? '').trim();
+      const location = String(form.get('location') ?? '').trim();
+      const notes = String(form.get('notes') ?? '').trim();
+      const errors = validateBoxInput({ name, notes });
+
+      if (Object.keys(errors).length > 0) {
+        sendHtml(response, 200, renderInventoryPage(workspace, { name, location, notes }, errors));
+        return;
+      }
+
+      const box = await store.createBox(workspace.id, {
+        name,
+        locationSummary: location,
+        notes,
+      });
+
+      redirect(response, `/boxes/${box.boxCode}`);
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname.startsWith('/boxes/')) {
+      const workspace = await requireWorkspace(store, request, response);
+
+      if (!workspace) {
+        return;
+      }
+
+      const boxCode = decodeURIComponent(url.pathname.slice('/boxes/'.length));
+      const box = await store.findBoxByCode(boxCode);
+
+      if (!box || box.workspaceId !== workspace.id) {
+        sendNotFound(response);
+        return;
+      }
+
+      sendHtml(response, 200, renderBoxPage(box));
       return;
     }
 
@@ -175,8 +177,7 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
       return;
     }
 
-    response.writeHead(404);
-    response.end('Not found');
+    sendNotFound(response);
   });
 
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));

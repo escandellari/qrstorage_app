@@ -32,3 +32,9 @@ export async function requestMagicLink(app, email) {
 
   return app.server.getSentEmails().at(-1).magicLinkUrl;
 }
+
+export async function signInAs(app, email) {
+  const magicLinkUrl = await requestMagicLink(app, email);
+  const response = await fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' });
+  return response.headers.get('set-cookie').split(';')[0];
+}
