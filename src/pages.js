@@ -2,6 +2,7 @@ import { renderBoxConflictMessage, renderBoxEditSection, renderBoxNotesCounterSc
 import { renderBoxItemsSection } from './box-page-view.js';
 import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
 import { escapeHtml, renderPage } from './html.js';
+import { renderInventorySearchForm } from './inventory-search-form.js';
 
 export function renderSignInPage({ returnTo = '', message = 'Enter your email to continue.' } = {}) {
   return renderPage({
@@ -48,13 +49,7 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
         <p>${escapeHtml(workspace.name)}</p>
         <section>
           <h2>Search inventory</h2>
-          <form method="get" action="/inventory/search">
-            <label>
-              Search term
-              <input type="search" name="q" />
-            </label>
-            <button type="submit">Search</button>
-          </form>
+          ${renderInventorySearchForm()}
         </section>
         <section>
           <h2>Create box</h2>
