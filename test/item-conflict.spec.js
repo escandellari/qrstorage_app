@@ -1,38 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { signInAs } from './support/test-server.js';
+import { createBoxItemsTestApp, workspaceMembers } from './support/box-items.js';
 
 test('PATCH /boxes/:boxCode/items/:itemId with a stale changed field shows a conflict state with the latest saved values', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'editor@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-      ],
-    },
-  });
+  const app = await createBoxItemsTestApp({ members: workspaceMembers });
 
   try {
     const firstUserCookie = await signInAs(app, 'owner@example.com');
@@ -90,36 +62,7 @@ test('PATCH /boxes/:boxCode/items/:itemId with a stale changed field shows a con
 });
 
 test('PATCH /boxes/:boxCode/items/:itemId after another user deleted the item shows the removed-item message', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'editor@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-      ],
-    },
-  });
+  const app = await createBoxItemsTestApp({ members: workspaceMembers });
 
   try {
     const firstUserCookie = await signInAs(app, 'owner@example.com');

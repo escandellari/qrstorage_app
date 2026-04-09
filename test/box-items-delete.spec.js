@@ -1,34 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { signInAs } from './support/test-server.js';
+import { createBoxItemsTestApp } from './support/box-items.js';
 
 test('POST /boxes/:boxCode/items/:itemId/delete removes the item and returns to the box page without it', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-      ],
-    },
-  });
+  const app = await createBoxItemsTestApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');

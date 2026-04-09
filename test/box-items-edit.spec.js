@@ -1,39 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
-
-const workspaceMembers = [
-  ...defaultSeedData.members,
-  { id: 'member-2', email: 'editor@example.com', workspaceId: 'workspace-1', role: 'member' },
-];
+import { signInAs } from './support/test-server.js';
+import { createBoxItemsTestApp, defaultItem, workspaceMembers } from './support/box-items.js';
 
 test('PATCH /boxes/:boxCode/items/:itemId with valid data updates the item and shows the saved values on the box page', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-      ],
-    },
-  });
+  const app = await createBoxItemsTestApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
@@ -76,32 +47,7 @@ test('PATCH /boxes/:boxCode/items/:itemId with valid data updates the item and s
 });
 
 test('PATCH /boxes/:boxCode/items/:itemId with invalid data re-renders inline errors and keeps the saved item unchanged', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-      ],
-    },
-  });
+  const app = await createBoxItemsTestApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
@@ -136,40 +82,19 @@ test('PATCH /boxes/:boxCode/items/:itemId with invalid data re-renders inline er
 });
 
 test('editing another item on the same box page still saves when a different item changed first', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: workspaceMembers,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: 'Stored in a mesh bag.',
-        },
-        {
-          id: 'item-2',
-          boxId: 'box-1',
-          name: 'Torch',
-          quantity: 1,
-          category: 'Lighting',
-          notes: '',
-        },
-      ],
-    },
+  const app = await createBoxItemsTestApp({
+    members: workspaceMembers,
+    items: [
+      defaultItem,
+      {
+        id: 'item-2',
+        boxId: 'box-1',
+        name: 'Torch',
+        quantity: 1,
+        category: 'Lighting',
+        notes: '',
+      },
+    ],
   });
 
   try {
