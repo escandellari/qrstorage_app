@@ -151,6 +151,9 @@ export function renderBoxPage(
         ${removedItemMessage ? `<p>${escapeHtml(removedItemMessage)}</p>` : ''}
         ${boxWarning ? `<p>${escapeHtml(boxWarning)}</p>` : ''}
         ${renderBoxConflictMessage(conflictBox, escapeHtml)}
+        <form method="post" action="/boxes/${encodeURIComponent(box.boxCode)}/archive">
+          <button type="submit">Archive box</button>
+        </form>
         ${boxEditSection}
         ${itemList}
         <section>

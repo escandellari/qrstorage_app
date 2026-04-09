@@ -181,6 +181,36 @@ export async function createDataStore(dataDir, seedData = {}) {
       });
     },
 
+    async archiveBox(boxId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const box = data.boxes.find((record) => record.id === boxId);
+
+        if (!box) {
+          return null;
+        }
+
+        box.status = 'archived';
+        await writeData(data);
+        return { ...box };
+      });
+    },
+
+    async restoreBox(boxId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const box = data.boxes.find((record) => record.id === boxId);
+
+        if (!box) {
+          return null;
+        }
+
+        box.status = 'active';
+        await writeData(data);
+        return { ...box };
+      });
+    },
+
     async listBoxesForWorkspace(workspaceId) {
       const data = await readData();
       return data.boxes.filter((box) => box.workspaceId === workspaceId && box.status === 'active');

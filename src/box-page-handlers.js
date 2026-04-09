@@ -1,12 +1,18 @@
-import { findActiveWorkspaceBox, getBoxCodeFromPath, getBoxPath } from './box-utils.js';
+import { findActiveWorkspaceBox, findWorkspaceBoxByCode, getBoxCodeFromPath, getBoxPath, isArchivedBox } from './box-utils.js';
 import { getBoxDetailsValues, getBoxEditValues, getOriginalBoxDetailsValues, getStoredBoxDetails, hasSimilarBoxName } from './box-details.js';
 import { renderBoxPage, validateBoxInput } from './pages.js';
+import { renderArchivedBoxPage } from './archived-box-view.js';
 import { validateItemInput } from './item-utils.js';
 import { getBoxPageOptions, getCreateItemInput, getItemValues, getOriginalItemValues, getUpdateItemInput, isBoxAtItemLimit } from './box-items.js';
 
 async function findWorkspaceBox(store, workspaceId, pathname) {
   const boxCode = getBoxCodeFromPath(pathname);
   return findActiveWorkspaceBox(store, workspaceId, boxCode);
+}
+
+async function findViewableWorkspaceBox(store, workspaceId, pathname) {
+  const boxCode = getBoxCodeFromPath(pathname);
+  return findWorkspaceBoxByCode(store, workspaceId, boxCode);
 }
 
 export async function handleCreateBoxItemRequest({
@@ -201,11 +207,40 @@ export async function handleUpdateBoxRequest({
   redirect(response, getBoxPath(updatedBox.boxCode));
 }
 
-export async function handleGetBoxPageRequest({ store, workspaceId, pathname, response, sendHtml, sendNotFound }) {
+export async function handleArchiveBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
   const box = await findWorkspaceBox(store, workspaceId, pathname);
 
   if (!box) {
     sendNotFound(response);
+    return;
+  }
+
+  await store.archiveBox(box.id);
+  redirect(response, getBoxPath(box.boxCode));
+}
+
+export async function handleRestoreBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
+  const box = await findViewableWorkspaceBox(store, workspaceId, pathname);
+
+  if (!box || !isArchivedBox(box)) {
+    sendNotFound(response);
+    return;
+  }
+
+  await store.restoreBox(box.id);
+  redirect(response, getBoxPath(box.boxCode));
+}
+
+export async function handleGetBoxPageRequest({ store, workspaceId, pathname, response, sendHtml, sendNotFound }) {
+  const box = await findViewableWorkspaceBox(store, workspaceId, pathname);
+
+  if (!box) {
+    sendNotFound(response);
+    return;
+  }
+
+  if (isArchivedBox(box)) {
+    sendHtml(response, 200, renderArchivedBoxPage(box));
     return;
   }
 
