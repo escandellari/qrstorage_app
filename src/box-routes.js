@@ -16,6 +16,37 @@ import {
   handleUpdateBoxRequest,
 } from './box-page-handlers.js';
 
+async function handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, callback) {
+  const workspace = await requireWorkspace(store, request, response, redirect);
+
+  if (!workspace) {
+    return true;
+  }
+
+  await callback(workspace);
+  return true;
+}
+
+function getBoxItemPathParts(pathname) {
+  const [, , boxCode, , itemId] = pathname.split('/');
+  return {
+    boxCode,
+    itemId,
+    boxPath: `/boxes/${boxCode}`,
+  };
+}
+
+async function readPatchForm({ method, request, readFormBody, sendNotFound, response }) {
+  const form = method === 'POST' ? await readFormBody(request) : null;
+
+  if (method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
+    sendNotFound(response);
+    return null;
+  }
+
+  return form;
+}
+
 export async function handleQrBoxRequest({
   store,
   request,
@@ -90,158 +121,121 @@ export async function handleBoxRoutes({
   sendNotFound,
 }) {
   if (method === 'POST' && /^\/boxes\/[^/]+\/items$/.test(pathname)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
-
-    if (!workspace) {
-      return true;
-    }
-
-    await handleCreateBoxItemRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname,
-      request,
-      response,
-      readFormBody,
-      sendHtml,
-      redirect,
-      sendNotFound,
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      await handleCreateBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+      });
     });
-    return true;
   }
 
   if (/^\/boxes\/[^/]+\/items\/[^/]+$/.test(pathname) && ['PATCH', 'POST'].includes(method)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      const form = await readPatchForm({ method, request, readFormBody, sendNotFound, response });
 
-    if (!workspace) {
-      return true;
-    }
+      if (method === 'POST' && !form) {
+        return;
+      }
 
-    const form = method === 'POST' ? await readFormBody(request) : null;
-
-    if (method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
-      sendNotFound(response);
-      return true;
-    }
-
-    const [, , boxCode, , itemId] = pathname.split('/');
-    await handleUpdateBoxItemRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname: `/boxes/${boxCode}`,
-      itemId,
-      request,
-      response,
-      readFormBody,
-      sendHtml,
-      redirect,
-      sendNotFound,
-      form,
+      const { boxPath, itemId } = getBoxItemPathParts(pathname);
+      await handleUpdateBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: boxPath,
+        itemId,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+        form,
+      });
     });
-    return true;
   }
 
   if (method === 'POST' && /^\/boxes\/[^/]+\/items\/[^/]+\/delete$/.test(pathname)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
-
-    if (!workspace) {
-      return true;
-    }
-
-    const [, , boxCode, , itemId] = pathname.split('/');
-    await handleDeleteBoxItemRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname: `/boxes/${boxCode}`,
-      itemId,
-      response,
-      redirect,
-      sendNotFound,
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      const { boxPath, itemId } = getBoxItemPathParts(pathname);
+      await handleDeleteBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: boxPath,
+        itemId,
+        response,
+        redirect,
+        sendNotFound,
+      });
     });
-    return true;
   }
 
   if (method === 'POST' && /^\/boxes\/[^/]+\/archive$/.test(pathname)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
-
-    if (!workspace) {
-      return true;
-    }
-
-    await handleArchiveBoxRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname,
-      response,
-      redirect,
-      sendNotFound,
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      await handleArchiveBoxRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
+        response,
+        redirect,
+        sendNotFound,
+      });
     });
-    return true;
   }
 
   if (method === 'POST' && /^\/boxes\/[^/]+\/restore$/.test(pathname)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
-
-    if (!workspace) {
-      return true;
-    }
-
-    await handleRestoreBoxRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname,
-      response,
-      redirect,
-      sendNotFound,
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      await handleRestoreBoxRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
+        response,
+        redirect,
+        sendNotFound,
+      });
     });
-    return true;
   }
 
   if (/^\/boxes\/[^/]+$/.test(pathname) && ['PATCH', 'POST'].includes(method)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      const form = await readPatchForm({ method, request, readFormBody, sendNotFound, response });
 
-    if (!workspace) {
-      return true;
-    }
+      if (method === 'POST' && !form) {
+        return;
+      }
 
-    const form = method === 'POST' ? await readFormBody(request) : null;
-
-    if (method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
-      sendNotFound(response);
-      return true;
-    }
-
-    await handleUpdateBoxRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname,
-      request,
-      response,
-      readFormBody,
-      sendHtml,
-      redirect,
-      sendNotFound,
-      form,
+      await handleUpdateBoxRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+        form,
+      });
     });
-    return true;
   }
 
   if (method === 'GET' && /^\/boxes\/[^/]+$/.test(pathname)) {
-    const workspace = await requireWorkspace(store, request, response, redirect);
-
-    if (!workspace) {
-      return true;
-    }
-
-    await handleGetBoxPageRequest({
-      store,
-      workspaceId: workspace.id,
-      pathname,
-      response,
-      sendHtml,
-      sendNotFound,
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      await handleGetBoxPageRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
+        response,
+        sendHtml,
+        sendNotFound,
+      });
     });
-    return true;
   }
 
   return false;
