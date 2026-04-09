@@ -37,3 +37,37 @@ test('GET /boxes/:boxCode renders a saved box by its permanent code', async () =
     await app.close();
   }
 });
+
+test('GET /boxes/:boxCode escapes the page title for user-provided box names', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0099',
+          name: '</title><script>alert(1)</script><title>',
+          locationSummary: '',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0099`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /&lt;\/title&gt;&lt;script&gt;alert\(1\)&lt;\/script&gt;&lt;title&gt;/);
+    assert.doesNotMatch(html, /<title><\/title><script>alert\(1\)<\/script><title><\/title>/);
+    assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  } finally {
+    await app.close();
+  }
+});
