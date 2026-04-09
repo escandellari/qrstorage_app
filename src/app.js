@@ -7,12 +7,11 @@ import {
   findActiveWorkspaceBox,
   getBoxCodeFromPath,
   getBoxPath,
-  getLabelPath,
   getQrPath,
 } from './box-utils.js';
+import { handleCreateBoxItemRequest, handleGetBoxPageRequest } from './box-page-handlers.js';
 import {
   renderBoxNotFoundPage,
-  renderBoxPage,
   renderCheckEmailPage,
   renderInventoryPage,
   renderLabelPage,
@@ -42,7 +41,6 @@ function sendNotFound(response) {
 function normalizeBaseUrl(baseUrl) {
   return String(baseUrl).replace(/\/$/, '');
 }
-
 
 async function readFormBody(request) {
   const chunks = [];
@@ -203,6 +201,27 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
+    if (request.method === 'POST' && /^\/boxes\/[^/]+\/items$/.test(url.pathname)) {
+      const workspace = await requireWorkspace(store, request, response);
+
+      if (!workspace) {
+        return;
+      }
+
+      await handleCreateBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: url.pathname,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+      });
+      return;
+    }
+
     if (request.method === 'GET' && /^\/boxes\/[^/]+$/.test(url.pathname)) {
       const workspace = await requireWorkspace(store, request, response);
 
@@ -210,15 +229,14 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      const boxCode = getBoxCodeFromPath(url.pathname);
-      const box = await findActiveWorkspaceBox(store, workspace.id, boxCode);
-
-      if (!box) {
-        sendNotFound(response);
-        return;
-      }
-
-      sendHtml(response, 200, renderBoxPage(box, { labelPath: getLabelPath(box.boxCode) }));
+      await handleGetBoxPageRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: url.pathname,
+        response,
+        sendHtml,
+        sendNotFound,
+      });
       return;
     }
 

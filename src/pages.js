@@ -94,7 +94,35 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
   });
 }
 
-export function renderBoxPage(box, { labelPath = `/boxes/${encodeURIComponent(box.boxCode)}/label` } = {}) {
+export function renderBoxPage(
+  box,
+  {
+    labelPath = `/boxes/${encodeURIComponent(box.boxCode)}/label`,
+    items = [],
+    itemValues = {},
+    itemErrors = {},
+    itemLimitMessage = '',
+  } = {},
+) {
+  const name = escapeHtml(itemValues.name ?? '');
+  const quantity = escapeHtml(itemValues.quantity ?? '');
+  const category = escapeHtml(itemValues.category ?? '');
+  const notes = escapeHtml(itemValues.notes ?? '');
+  const itemList = items.length
+    ? `<section><h2>Contents</h2><ul>${items
+        .map((item) => {
+          const details = [
+            item.quantity ? `Quantity: ${escapeHtml(item.quantity)}` : '',
+            item.category ? `Category: ${escapeHtml(item.category)}` : '',
+            item.notes ? `Notes: ${escapeHtml(item.notes)}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          return `<li><strong>${escapeHtml(item.name)}</strong>${details ? `<div>${details}</div>` : ''}</li>`;
+        })
+        .join('')}</ul></section>`
+    : '<section><h2>Contents</h2><p>Add the first item to this box.</p></section>';
+
   return renderPage({
     title: box.name,
     body: `
@@ -105,6 +133,34 @@ export function renderBoxPage(box, { labelPath = `/boxes/${encodeURIComponent(bo
         <p><strong>Box code</strong>: ${escapeHtml(box.boxCode)}</p>
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
         ${box.notes ? `<p><strong>Notes</strong>: ${escapeHtml(box.notes)}</p>` : ''}
+        ${itemList}
+        <section>
+          <h2>Add item</h2>
+          ${itemLimitMessage ? `<p>${escapeHtml(itemLimitMessage)}</p>` : ''}
+          ${itemLimitMessage ? '' : `<form method="post" action="/boxes/${encodeURIComponent(box.boxCode)}/items">
+            <label>
+              Item name
+              <input type="text" name="name" value="${name}" required />
+            </label>
+            ${itemErrors.name ? `<p>${escapeHtml(itemErrors.name)}</p>` : ''}
+            <label>
+              Quantity
+              <input type="text" name="quantity" inputmode="numeric" value="${quantity}" />
+            </label>
+            ${itemErrors.quantity ? `<p>${escapeHtml(itemErrors.quantity)}</p>` : ''}
+            <label>
+              Category
+              <input type="text" name="category" value="${category}" />
+            </label>
+            ${itemErrors.category ? `<p>${escapeHtml(itemErrors.category)}</p>` : ''}
+            <label>
+              Notes
+              <textarea name="notes">${notes}</textarea>
+            </label>
+            ${itemErrors.notes ? `<p>${escapeHtml(itemErrors.notes)}</p>` : ''}
+            <button type="submit">Add item</button>
+          </form>`}
+        </section>
       </main>
     `,
   });
