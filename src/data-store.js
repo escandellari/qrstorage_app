@@ -169,5 +169,52 @@ export async function createDataStore(dataDir, seedData = {}) {
         return item;
       });
     },
+
+    async updateItem(boxId, itemId, input, originalInput = input) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const item = data.items.find((record) => record.id === itemId && record.boxId === boxId);
+
+        if (!item) {
+          return { status: 'deleted' };
+        }
+
+        const fields = ['name', 'quantity', 'category', 'notes'];
+        const changedFields = fields.filter((field) => input[field] !== originalInput[field]);
+        const hasConflict = changedFields.some((field) => item[field] !== originalInput[field]);
+
+        if (hasConflict) {
+          return {
+            status: 'conflict',
+            item: { ...item },
+          };
+        }
+
+        for (const field of changedFields) {
+          item[field] = input[field];
+        }
+
+        await writeData(data);
+        return {
+          status: 'updated',
+          item: { ...item },
+        };
+      });
+    },
+
+    async deleteItem(boxId, itemId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const itemIndex = data.items.findIndex((record) => record.id === itemId && record.boxId === boxId);
+
+        if (itemIndex < 0) {
+          return null;
+        }
+
+        const [deletedItem] = data.items.splice(itemIndex, 1);
+        await writeData(data);
+        return deletedItem;
+      });
+    },
   };
 }

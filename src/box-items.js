@@ -10,6 +10,15 @@ export function getItemValues(form) {
   };
 }
 
+export function getOriginalItemValues(form) {
+  return {
+    name: String(form.get('originalName') ?? '').trim(),
+    quantity: String(form.get('originalQuantity') ?? '').trim(),
+    category: String(form.get('originalCategory') ?? '').trim(),
+    notes: String(form.get('originalNotes') ?? '').trim(),
+  };
+}
+
 export function getCreateItemInput(itemValues) {
   return {
     name: itemValues.name,
@@ -17,6 +26,10 @@ export function getCreateItemInput(itemValues) {
     category: itemValues.category,
     notes: itemValues.notes,
   };
+}
+
+export function getUpdateItemInput(itemValues) {
+  return getCreateItemInput(itemValues);
 }
 
 export function isBoxAtItemLimit(items) {
