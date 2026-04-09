@@ -23,6 +23,11 @@ function redirect(response, location, headers = {}) {
   response.end();
 }
 
+function sendNotFound(response) {
+  response.writeHead(404);
+  response.end('Not found');
+}
+
 async function readFormBody(request) {
   const chunks = [];
 
@@ -57,6 +62,17 @@ async function getRequestContext(store, request) {
   return { session, member, workspace };
 }
 
+async function requireWorkspace(store, request, response) {
+  const { workspace } = await getRequestContext(store, request);
+
+  if (!workspace) {
+    redirect(response, '/sign-in');
+    return null;
+  }
+
+  return workspace;
+}
+
 export async function startServer({ dataDir, port = 0, seedData } = {}) {
   const store = await createDataStore(dataDir, seedData);
   const sentEmails = [];
@@ -65,10 +81,9 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
     const url = new URL(request.url, 'http://127.0.0.1');
 
     if (request.method === 'GET' && url.pathname === '/inventory') {
-      const { workspace } = await getRequestContext(store, request);
+      const workspace = await requireWorkspace(store, request, response);
 
       if (!workspace) {
-        redirect(response, '/sign-in');
         return;
       }
 
@@ -77,10 +92,9 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
     }
 
     if (request.method === 'POST' && url.pathname === '/boxes') {
-      const { workspace } = await getRequestContext(store, request);
+      const workspace = await requireWorkspace(store, request, response);
 
       if (!workspace) {
-        redirect(response, '/sign-in');
         return;
       }
 
@@ -106,10 +120,9 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
     }
 
     if (request.method === 'GET' && url.pathname.startsWith('/boxes/')) {
-      const { workspace } = await getRequestContext(store, request);
+      const workspace = await requireWorkspace(store, request, response);
 
       if (!workspace) {
-        redirect(response, '/sign-in');
         return;
       }
 
@@ -117,8 +130,7 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
       const box = await store.findBoxByCode(boxCode);
 
       if (!box || box.workspaceId !== workspace.id) {
-        response.writeHead(404);
-        response.end('Not found');
+        sendNotFound(response);
         return;
       }
 
@@ -165,8 +177,7 @@ export async function startServer({ dataDir, port = 0, seedData } = {}) {
       return;
     }
 
-    response.writeHead(404);
-    response.end('Not found');
+    sendNotFound(response);
   });
 
   await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
