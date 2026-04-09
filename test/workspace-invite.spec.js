@@ -1,22 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { createWorkspaceInvite, openInvite } from './support/workspace-invite.js';
 
 test('POST /workspace/invites as an owner sends one workspace invite email', async () => {
   const app = await createTestServer({ seedData: defaultSeedData });
 
   try {
-    const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/workspace/invites`, {
-      method: 'POST',
-      headers: {
-        cookie: sessionCookie,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        email: 'invitee@example.com',
-      }),
-    });
+    const { response } = await createWorkspaceInvite(app, { email: 'invitee@example.com' });
     const html = await response.text();
 
     assert.equal(response.status, 200);
@@ -68,24 +59,14 @@ test('owner invite flow without a box destination lands the invited user on inve
   const app = await createTestServer({ seedData: defaultSeedData });
 
   try {
-    const ownerCookie = await signInAs(app, 'owner@example.com');
-    const inviteResponse = await fetch(`${app.baseUrl}/workspace/invites`, {
-      method: 'POST',
-      headers: {
-        cookie: ownerCookie,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        email: 'inventory-invitee@example.com',
-      }),
+    const { response: inviteResponse, inviteUrl } = await createWorkspaceInvite(app, {
+      email: 'inventory-invitee@example.com',
     });
     assert.equal(inviteResponse.status, 200);
 
-    const inviteUrl = app.server.getSentEmails().at(-1).inviteUrl;
-    const openInviteResponse = await fetch(`${app.baseUrl}${inviteUrl}`);
+    const { response: openInviteResponse, magicLinkUrl } = await openInvite(app, inviteUrl);
     assert.equal(openInviteResponse.status, 200);
 
-    const magicLinkUrl = app.server.getSentEmails().at(-1).magicLinkUrl;
     const magicLinkResponse = await fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' });
 
     assert.equal(magicLinkResponse.status, 302);

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { createTestServer, defaultSeedData } from './support/test-server.js';
+import { createWorkspaceInvite, openInvite } from './support/workspace-invite.js';
 
 test('owner invite flow joins the invited user to the workspace and lands on the invited box page', async () => {
   const app = await createTestServer({
@@ -21,28 +22,18 @@ test('owner invite flow joins the invited user to the workspace and lands on the
   });
 
   try {
-    const ownerCookie = await signInAs(app, 'owner@example.com');
-    const inviteResponse = await fetch(`${app.baseUrl}/workspace/invites`, {
-      method: 'POST',
-      headers: {
-        cookie: ownerCookie,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        email: 'invitee@example.com',
-        returnTo: '/q/BOX-0042',
-      }),
+    const { response: inviteResponse, inviteUrl } = await createWorkspaceInvite(app, {
+      email: 'invitee@example.com',
+      returnTo: '/q/BOX-0042',
     });
     assert.equal(inviteResponse.status, 200);
 
-    const inviteUrl = app.server.getSentEmails().at(-1).inviteUrl;
-    const openInviteResponse = await fetch(`${app.baseUrl}${inviteUrl}`);
+    const { response: openInviteResponse, magicLinkUrl } = await openInvite(app, inviteUrl);
     const inviteHtml = await openInviteResponse.text();
 
     assert.equal(openInviteResponse.status, 200);
     assert.match(inviteHtml, /check your email/i);
 
-    const magicLinkUrl = app.server.getSentEmails().at(-1).magicLinkUrl;
     const magicLinkResponse = await fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' });
 
     assert.equal(magicLinkResponse.status, 302);
@@ -74,29 +65,18 @@ test('re-opening an accepted invite does not create duplicate membership and lan
   const app = await createTestServer({ seedData: defaultSeedData });
 
   try {
-    const ownerCookie = await signInAs(app, 'owner@example.com');
-    const inviteResponse = await fetch(`${app.baseUrl}/workspace/invites`, {
-      method: 'POST',
-      headers: {
-        cookie: ownerCookie,
-        'content-type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        email: 'repeat@example.com',
-      }),
+    const { response: inviteResponse, inviteUrl } = await createWorkspaceInvite(app, {
+      email: 'repeat@example.com',
     });
     assert.equal(inviteResponse.status, 200);
 
-    const inviteUrl = app.server.getSentEmails().at(-1).inviteUrl;
-    await fetch(`${app.baseUrl}${inviteUrl}`);
-    let magicLinkUrl = app.server.getSentEmails().at(-1).magicLinkUrl;
+    let { magicLinkUrl } = await openInvite(app, inviteUrl);
     let magicLinkResponse = await fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' });
 
     assert.equal(magicLinkResponse.status, 302);
     assert.equal(magicLinkResponse.headers.get('location'), '/inventory');
 
-    await fetch(`${app.baseUrl}${inviteUrl}`);
-    magicLinkUrl = app.server.getSentEmails().at(-1).magicLinkUrl;
+    ({ magicLinkUrl } = await openInvite(app, inviteUrl));
     magicLinkResponse = await fetch(`${app.baseUrl}${magicLinkUrl}`, { redirect: 'manual' });
 
     assert.equal(magicLinkResponse.status, 302);
