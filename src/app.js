@@ -9,7 +9,7 @@ import {
   getBoxPath,
   getQrPath,
 } from './box-utils.js';
-import { handleCreateBoxItemRequest, handleGetBoxPageRequest } from './box-page-handlers.js';
+import { handleCreateBoxItemRequest, handleDeleteBoxItemRequest, handleGetBoxPageRequest, handleUpdateBoxItemRequest } from './box-page-handlers.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -19,98 +19,8 @@ import {
   renderSignInPage,
   validateBoxInput,
 } from './pages.js';
-
-function sendHtml(response, statusCode, html, headers = {}) {
-  response.writeHead(statusCode, {
-    'content-type': 'text/html; charset=utf-8',
-    ...headers,
-  });
-  response.end(html);
-}
-
-function redirect(response, location, headers = {}) {
-  response.writeHead(302, { location, ...headers });
-  response.end();
-}
-
-function sendNotFound(response) {
-  response.writeHead(404);
-  response.end('Not found');
-}
-
-function normalizeBaseUrl(baseUrl) {
-  return String(baseUrl).replace(/\/$/, '');
-}
-
-async function readFormBody(request) {
-  const chunks = [];
-
-  for await (const chunk of request) {
-    chunks.push(chunk);
-  }
-
-  return new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
-}
-
-function parseCookies(request) {
-  const cookieHeader = request.headers.cookie;
-
-  if (!cookieHeader) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    cookieHeader.split(';').map((pair) => {
-      const [name, ...value] = pair.trim().split('=');
-      return [name, value.join('=')];
-    }),
-  );
-}
-
-async function getRequestContext(store, request) {
-  const cookies = parseCookies(request);
-  const session = cookies.session ? await store.findSession(cookies.session) : null;
-  const member = session ? await store.findMemberById(session.memberId) : null;
-  const workspace = member ? await store.findWorkspaceById(member.workspaceId) : null;
-
-  return { session, member, workspace };
-}
-
-function getValidatedReturnToPath(pathname) {
-  if (!/^\/q\/[^/]+$/.test(pathname)) {
-    return '';
-  }
-
-  return pathname;
-}
-
-async function getPostAuthRedirectPath(store, returnToPath) {
-  const validatedPath = getValidatedReturnToPath(returnToPath);
-
-  if (!validatedPath) {
-    return '/inventory';
-  }
-
-  const boxCode = getBoxCodeFromPath(validatedPath);
-  const box = await findActiveBoxByCode(store, boxCode);
-
-  if (!box) {
-    return '/inventory';
-  }
-
-  return getBoxPath(box.boxCode);
-}
-
-async function requireWorkspace(store, request, response) {
-  const { workspace } = await getRequestContext(store, request);
-
-  if (!workspace) {
-    redirect(response, '/sign-in');
-    return null;
-  }
-
-  return workspace;
-}
+import { normalizeBaseUrl, readFormBody, redirect, sendHtml, sendNotFound } from './http.js';
+import { getPostAuthRedirectPath, getRequestContext, getValidatedReturnToPath, requireWorkspace } from './auth.js';
 
 export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {}) {
   const store = await createDataStore(dataDir, seedData);
@@ -121,7 +31,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     const url = new URL(request.url, 'http://127.0.0.1');
 
     if (request.method === 'GET' && url.pathname === '/inventory') {
-      const workspace = await requireWorkspace(store, request, response);
+      const workspace = await requireWorkspace(store, request, response, redirect);
 
       if (!workspace) {
         return;
@@ -132,7 +42,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'POST' && url.pathname === '/boxes') {
-      const workspace = await requireWorkspace(store, request, response);
+      const workspace = await requireWorkspace(store, request, response, redirect);
 
       if (!workspace) {
         return;
@@ -180,7 +90,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'GET' && /^\/boxes\/[^/]+\/label$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response);
+      const workspace = await requireWorkspace(store, request, response, redirect);
 
       if (!workspace) {
         return;
@@ -202,7 +112,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
     }
 
     if (request.method === 'POST' && /^\/boxes\/[^/]+\/items$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response);
+      const workspace = await requireWorkspace(store, request, response, redirect);
 
       if (!workspace) {
         return;
@@ -222,8 +132,59 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
+    if (/^\/boxes\/[^/]+\/items\/[^/]+$/.test(url.pathname) && ['PATCH', 'POST'].includes(request.method)) {
+      const workspace = await requireWorkspace(store, request, response, redirect);
+
+      if (!workspace) {
+        return;
+      }
+
+      const form = request.method === 'POST' ? await readFormBody(request) : null;
+
+      if (request.method === 'POST' && String(form.get('_method') ?? '').toUpperCase() !== 'PATCH') {
+        sendNotFound(response);
+        return;
+      }
+
+      const [, , boxCode, , itemId] = url.pathname.split('/');
+      await handleUpdateBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: `/boxes/${boxCode}`,
+        itemId,
+        request,
+        response,
+        readFormBody,
+        sendHtml,
+        redirect,
+        sendNotFound,
+        form,
+      });
+      return;
+    }
+
+    if (request.method === 'POST' && /^\/boxes\/[^/]+\/items\/[^/]+\/delete$/.test(url.pathname)) {
+      const workspace = await requireWorkspace(store, request, response, redirect);
+
+      if (!workspace) {
+        return;
+      }
+
+      const [, , boxCode, , itemId] = url.pathname.split('/');
+      await handleDeleteBoxItemRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname: `/boxes/${boxCode}`,
+        itemId,
+        response,
+        redirect,
+        sendNotFound,
+      });
+      return;
+    }
+
     if (request.method === 'GET' && /^\/boxes\/[^/]+$/.test(url.pathname)) {
-      const workspace = await requireWorkspace(store, request, response);
+      const workspace = await requireWorkspace(store, request, response, redirect);
 
       if (!workspace) {
         return;

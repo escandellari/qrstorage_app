@@ -1,3 +1,5 @@
+import { renderBoxItemsSection } from './box-page-view.js';
+
 function renderPage({ title, head = '', body }) {
   return `<!doctype html>
 <html lang="en">
@@ -102,26 +104,28 @@ export function renderBoxPage(
     itemValues = {},
     itemErrors = {},
     itemLimitMessage = '',
+    editItemId = '',
+    editItemValues = {},
+    editItemErrors = {},
+    conflictItemId = '',
+    conflictItem = null,
+    removedItemMessage = '',
   } = {},
 ) {
   const name = escapeHtml(itemValues.name ?? '');
   const quantity = escapeHtml(itemValues.quantity ?? '');
   const category = escapeHtml(itemValues.category ?? '');
   const notes = escapeHtml(itemValues.notes ?? '');
-  const itemList = items.length
-    ? `<section><h2>Contents</h2><ul>${items
-        .map((item) => {
-          const details = [
-            item.quantity ? `Quantity: ${escapeHtml(item.quantity)}` : '',
-            item.category ? `Category: ${escapeHtml(item.category)}` : '',
-            item.notes ? `Notes: ${escapeHtml(item.notes)}` : '',
-          ]
-            .filter(Boolean)
-            .join(' · ');
-          return `<li><strong>${escapeHtml(item.name)}</strong>${details ? `<div>${details}</div>` : ''}</li>`;
-        })
-        .join('')}</ul></section>`
-    : '<section><h2>Contents</h2><p>Add the first item to this box.</p></section>';
+  const itemList = renderBoxItemsSection({
+    boxCode: box.boxCode,
+    items,
+    editItemId,
+    editItemValues,
+    editItemErrors,
+    conflictItemId,
+    conflictItem,
+    escapeHtml,
+  });
 
   return renderPage({
     title: box.name,
@@ -133,6 +137,7 @@ export function renderBoxPage(
         <p><strong>Box code</strong>: ${escapeHtml(box.boxCode)}</p>
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
         ${box.notes ? `<p><strong>Notes</strong>: ${escapeHtml(box.notes)}</p>` : ''}
+        ${removedItemMessage ? `<p>${escapeHtml(removedItemMessage)}</p>` : ''}
         ${itemList}
         <section>
           <h2>Add item</h2>
