@@ -33,7 +33,7 @@ async function fetchLabelHtml(app, boxCode, headers = {}) {
   };
 }
 
-test('GET /boxes/:boxCode/label renders a printable label with the box code and QR payload for the permanent box URL', async () => {
+test('GET /boxes/:boxCode/label renders a printable label with the box code and QR payload for the QR entry URL', async () => {
   const app = await createLabelTestApp({
     boxCode: 'BOX-0042',
     name: 'Camping Kit',
@@ -46,7 +46,7 @@ test('GET /boxes/:boxCode/label renders a printable label with the box code and 
 
     assert.equal(response.status, 200);
     assert.match(html, /BOX-0042/);
-    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/boxes/BOX-0042`)));
+    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/q/BOX-0042`)));
     assert.match(html, /<svg[^>]*xmlns="http:\/\/www\.w3\.org\/2000\/svg"/i);
     assert.doesNotMatch(html, />Inventory</i);
     assert.doesNotMatch(html, />Print label</i);
@@ -106,7 +106,7 @@ test('GET /boxes/:boxCode/label keeps key identifiers present for boxes with lon
     assert.equal(response.status, 200);
     assert.match(html, /Very long seasonal decorations and camping accessories box for the attic shelves/);
     assert.match(html, /BOX-0101/);
-    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/boxes/BOX-0101`)));
+    assert.match(html, new RegExp(escapeRegExp(`${app.baseUrl}/q/BOX-0101`)));
   } finally {
     await app.close();
   }
@@ -127,7 +127,7 @@ test('GET /boxes/:boxCode/label re-renders the same permanent box code and QR ta
       fetch(labelUrl, { headers: { cookie: sessionCookie } }),
     ]);
     const [firstHtml, secondHtml] = await Promise.all([firstResponse.text(), secondResponse.text()]);
-    const expectedTarget = `${app.baseUrl}/boxes/BOX-0101`;
+    const expectedTarget = `${app.baseUrl}/q/BOX-0101`;
     const targetPattern = new RegExp(escapeRegExp(expectedTarget), 'g');
 
     assert.equal(firstResponse.status, 200);
@@ -165,7 +165,7 @@ test('GET /boxes/:boxCode/label uses the configured canonical base URL instead o
     const { response, html } = await fetchLabelHtml(app, 'BOX-0110', { host: 'attacker.example.test' });
 
     assert.equal(response.status, 200);
-    assert.match(html, new RegExp(escapeRegExp(`${secureBaseUrl}/boxes/BOX-0110`)));
+    assert.match(html, new RegExp(escapeRegExp(`${secureBaseUrl}/q/BOX-0110`)));
     assert.doesNotMatch(html, /attacker\.example\.test/i);
   } finally {
     await app.close();

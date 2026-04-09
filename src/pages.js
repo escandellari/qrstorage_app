@@ -22,14 +22,15 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-export function renderSignInPage() {
+export function renderSignInPage({ returnTo = '', message = 'Enter your email to continue.' } = {}) {
   return renderPage({
     title: 'Sign in',
     body: `
       <main>
         <h1>Sign in</h1>
-        <p>Enter your email to continue.</p>
+        <p>${escapeHtml(message)}</p>
         <form method="post" action="/sign-in">
+          <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
           <label>
             Email
             <input type="email" name="email" autocomplete="email" required />
@@ -173,6 +174,19 @@ export function renderMagicLinkErrorPage() {
         <h1>This link has expired</h1>
         <p>Request a new magic link to continue.</p>
         <p><a href="/sign-in">Request a new magic link</a></p>
+      </main>
+    `,
+  });
+}
+
+export function renderBoxNotFoundPage() {
+  return renderPage({
+    title: 'Box not found',
+    body: `
+      <main>
+        <h1>We couldn't find that box</h1>
+        <p>Check the code and try again.</p>
+        <p><a href="/inventory">Back to inventory</a></p>
       </main>
     `,
   });
