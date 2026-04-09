@@ -41,7 +41,14 @@ export async function handleCreateBoxItemRequest({
     return;
   }
 
-  await store.createItem(box.id, getCreateItemInput(itemValues));
+  const createdItem = await store.createItem(box.id, getCreateItemInput(itemValues));
+
+  if (!createdItem) {
+    const updatedBoxPageOptions = await getBoxPageOptions(store, box);
+    sendHtml(response, 200, renderBoxPage(box, updatedBoxPageOptions));
+    return;
+  }
+
   redirect(response, getBoxPath(box.boxCode));
 }
 

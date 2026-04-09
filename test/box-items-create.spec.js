@@ -1,5 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { startServer } from '../src/app.js';
 import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
 
 test('GET /boxes/:boxCode for an empty box shows the add-first-item prompt and form', async () => {
@@ -206,6 +210,57 @@ test('POST /boxes/:boxCode/items with invalid input re-renders inline plain-lang
   }
 });
 
+test('GET /boxes/:boxCode works with existing data files that do not have an items collection yet', async () => {
+  const dataDir = await mkdtemp(join(tmpdir(), 'qrstorage-legacy-data-'));
+  await writeFile(
+    join(dataDir, 'data.json'),
+    JSON.stringify(
+      {
+        workspaces: defaultSeedData.workspaces,
+        members: defaultSeedData.members,
+        boxes: [
+          {
+            id: 'box-1',
+            workspaceId: 'workspace-1',
+            boxCode: 'BOX-0042',
+            name: 'Camping Kit',
+            locationSummary: 'Garage shelf',
+            notes: '',
+            status: 'active',
+          },
+        ],
+        magicLinks: [],
+        sessions: [],
+      },
+      null,
+      2,
+    ),
+  );
+
+  const server = await startServer({ dataDir });
+  const app = {
+    baseUrl: `http://127.0.0.1:${server.port}`,
+    server,
+    async close() {
+      await server.close();
+      await rm(dataDir, { recursive: true, force: true });
+    },
+  };
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /Add the first item/i);
+  } finally {
+    await app.close();
+  }
+});
+
 test('a box with 500 items blocks further additions with a clear message', async () => {
   const app = await createTestServer({
     seedData: {
@@ -261,6 +316,70 @@ test('a box with 500 items blocks further additions with a clear message', async
     assert.equal(createResponse.status, 200);
     assert.match(createHtml, /This box already has 500 items\. Remove an item before adding another\./i);
     assert.doesNotMatch(createHtml, /Overflow item/);
+  } finally {
+    await app.close();
+  }
+});
+
+test('concurrent item creation does not let a box exceed the 500 item limit', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0042',
+          name: 'Camping Kit',
+          locationSummary: 'Garage shelf',
+          notes: '',
+          status: 'active',
+        },
+      ],
+      items: Array.from({ length: 499 }, (_, index) => ({
+        id: `item-${index + 1}`,
+        boxId: 'box-1',
+        name: `Item ${index + 1}`,
+        quantity: null,
+        category: '',
+        notes: '',
+      })),
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const createRequest = (name) =>
+      fetch(`${app.baseUrl}/boxes/BOX-0042/items`, {
+        method: 'POST',
+        redirect: 'manual',
+        headers: {
+          cookie: sessionCookie,
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          name,
+          quantity: '',
+          category: '',
+          notes: '',
+        }),
+      });
+
+    const [firstResponse, secondResponse] = await Promise.all([createRequest('Extra item A'), createRequest('Extra item B')]);
+
+    assert.deepEqual(
+      [firstResponse.status, secondResponse.status].sort((left, right) => left - right),
+      [200, 302],
+    );
+
+    const detailResponse = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await detailResponse.text();
+
+    assert.equal(detailResponse.status, 200);
+    assert.equal((html.match(/<li>/g) ?? []).length, 500);
+    assert.match(html, /This box already has 500 items\. Remove an item before adding another\./i);
   } finally {
     await app.close();
   }

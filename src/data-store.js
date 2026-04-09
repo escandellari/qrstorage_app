@@ -1,6 +1,7 @@
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { MAX_ITEMS_PER_BOX } from './item-utils.js';
 
 function createEmptyData() {
   return {
@@ -33,7 +34,10 @@ export async function createDataStore(dataDir, seedData = {}) {
 
   async function readData() {
     const contents = await readFile(filePath, 'utf8');
-    return JSON.parse(contents);
+    return {
+      ...createEmptyData(),
+      ...JSON.parse(contents),
+    };
   }
 
   async function writeData(data) {
@@ -147,6 +151,11 @@ export async function createDataStore(dataDir, seedData = {}) {
     async createItem(boxId, { name, quantity = null, category = '', notes = '' }) {
       return withMutationLock(async () => {
         const data = await readData();
+
+        if (data.items.filter((item) => item.boxId === boxId).length >= MAX_ITEMS_PER_BOX) {
+          return null;
+        }
+
         const item = {
           id: randomUUID(),
           boxId,
