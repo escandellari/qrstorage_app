@@ -14,7 +14,6 @@ function createEmptyData() {
     sessions: [],
   };
 }
-
 export async function createDataStore(dataDir, seedData = {}) {
   await mkdir(dataDir, { recursive: true });
   const filePath = join(dataDir, 'data.json');
@@ -32,7 +31,6 @@ export async function createDataStore(dataDir, seedData = {}) {
   } catch {
     await writeFile(filePath, JSON.stringify(initialData, null, 2));
   }
-
   async function readData() {
     const contents = await readFile(filePath, 'utf8');
     return {
@@ -215,10 +213,18 @@ export async function createDataStore(dataDir, seedData = {}) {
       const data = await readData();
       return data.boxes.filter((box) => box.workspaceId === workspaceId && box.status === 'active');
     },
-
+    async listAllBoxesForWorkspace(workspaceId) {
+      const data = await readData();
+      return data.boxes.filter((box) => box.workspaceId === workspaceId);
+    },
     async listItemsForBox(boxId) {
       const data = await readData();
       return data.items.filter((item) => item.boxId === boxId);
+    },
+    async listItemsForBoxIds(boxIds) {
+      const data = await readData();
+      const allowedBoxIds = new Set(boxIds);
+      return data.items.filter((item) => allowedBoxIds.has(item.boxId));
     },
 
     async createItem(boxId, { name, quantity = null, category = '', notes = '' }) {

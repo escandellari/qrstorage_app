@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { createDataStore } from './data-store.js';
 import { getBoxPath } from './box-utils.js';
+import { searchInventory } from './inventory-search.js';
+import { renderInventorySearchPage } from './inventory-search-view.js';
 import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
 import {
   renderBoxNotFoundPage,
@@ -31,6 +33,23 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       }
 
       sendHtml(response, 200, renderInventoryPage(workspace));
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/inventory/search') {
+      const workspace = await requireWorkspace(store, request, response, redirect);
+
+      if (!workspace) {
+        return;
+      }
+
+      const search = await searchInventory(store, workspace.id, {
+        query: url.searchParams.get('q') ?? '',
+        includeArchived: url.searchParams.get('includeArchived') === '1',
+        offset: Number(url.searchParams.get('offset') ?? '0') || 0,
+      });
+
+      sendHtml(response, 200, renderInventorySearchPage(workspace, search));
       return;
     }
 

@@ -1,30 +1,7 @@
 import { renderBoxConflictMessage, renderBoxEditSection, renderBoxNotesCounterScript } from './box-edit-view.js';
 import { renderBoxItemsSection } from './box-page-view.js';
 import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
-
-function renderPage({ title, head = '', body }) {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)}</title>
-    ${head}
-  </head>
-  <body>
-    ${body}
-  </body>
-</html>`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
-}
+import { escapeHtml, renderPage } from './html.js';
 
 export function renderSignInPage({ returnTo = '', message = 'Enter your email to continue.' } = {}) {
   return renderPage({
@@ -69,6 +46,16 @@ export function renderInventoryPage(workspace, values = {}, errors = {}) {
       <main>
         <h1>Inventory</h1>
         <p>${escapeHtml(workspace.name)}</p>
+        <section>
+          <h2>Search inventory</h2>
+          <form method="get" action="/inventory/search">
+            <label>
+              Search term
+              <input type="search" name="q" />
+            </label>
+            <button type="submit">Search</button>
+          </form>
+        </section>
         <section>
           <h2>Create box</h2>
           <form method="post" action="/boxes">
