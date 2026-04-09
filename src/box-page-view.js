@@ -1,3 +1,11 @@
+export function renderBoxActions({ escapeHtml, labelPath }) {
+  return `<nav>
+    <p><a href="/inventory">Inventory</a></p>
+    <p><a href="/inventory/search">Search inventory</a></p>
+    <p><a href="${escapeHtml(labelPath)}">Print label</a></p>
+  </nav>`;
+}
+
 export function renderBoxItemsSection({
   boxCode,
   items,

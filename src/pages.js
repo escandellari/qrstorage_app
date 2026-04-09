@@ -1,5 +1,5 @@
 import { renderBoxConflictMessage, renderBoxEditSection, renderBoxNotesCounterScript } from './box-edit-view.js';
-import { renderBoxItemsSection } from './box-page-view.js';
+import { renderBoxActions, renderBoxItemsSection } from './box-page-view.js';
 import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
 import { escapeHtml, renderPage } from './html.js';
 import { renderInventorySearchForm } from './inventory-search-form.js';
@@ -106,6 +106,10 @@ export function renderBoxPage(
   const quantity = escapeHtml(itemValues.quantity ?? '');
   const category = escapeHtml(itemValues.category ?? '');
   const notes = escapeHtml(itemValues.notes ?? '');
+  const boxActions = renderBoxActions({
+    escapeHtml,
+    labelPath,
+  });
   const itemList = renderBoxItemsSection({
     boxCode: box.boxCode,
     items,
@@ -124,8 +128,7 @@ export function renderBoxPage(
     head: renderBoxNotesCounterScript(),
     body: `
       <main>
-        <p><a href="/inventory">Inventory</a></p>
-        <p><a href="${escapeHtml(labelPath)}">Print label</a></p>
+        ${boxActions}
         <h1>${escapeHtml(box.name)}</h1>
         <p><strong>Box code</strong>: ${escapeHtml(box.boxCode)}</p>
         ${box.locationSummary ? `<p><strong>Location</strong>: ${escapeHtml(box.locationSummary)}</p>` : ''}
