@@ -1,42 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { defaultBox, defaultItem } from './support/box-items.js';
 
-test('GET /boxes/:boxCode shows a search action that opens inventory search, and search results still open box pages', async () => {
-  const app = await createTestServer({
+function createBoxSearchApp({ boxes = [defaultBox], items = [] } = {}) {
+  return createTestServer({
     seedData: {
       ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-        {
-          id: 'box-2',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0099',
-          name: 'Needlework Kit',
-          locationSummary: 'Hall cupboard',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-2',
-          name: 'Hand needles',
-          quantity: 6,
-          category: 'Repairs',
-          notes: '',
-        },
-      ],
+      boxes,
+      items,
     },
+  });
+}
+
+test('GET /boxes/:boxCode shows a search action that opens inventory search, and search results still open box pages', async () => {
+  const app = await createBoxSearchApp({
+    boxes: [
+      defaultBox,
+      {
+        ...defaultBox,
+        id: 'box-2',
+        boxCode: 'BOX-0099',
+        name: 'Needlework Kit',
+        locationSummary: 'Hall cupboard',
+      },
+    ],
+    items: [
+      {
+        ...defaultItem,
+        boxId: 'box-2',
+        name: 'Hand needles',
+        quantity: 6,
+        category: 'Repairs',
+        notes: '',
+      },
+    ],
   });
 
   try {
@@ -71,22 +69,7 @@ test('GET /boxes/:boxCode shows a search action that opens inventory search, and
 });
 
 test('GET /boxes/:boxCode for an empty box still shows the search action', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-    },
-  });
+  const app = await createBoxSearchApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
@@ -104,32 +87,7 @@ test('GET /boxes/:boxCode for an empty box still shows the search action', async
 });
 
 test('GET /boxes/:boxCode keeps the search action in the box page chrome for narrow layouts', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: '',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Tent pegs',
-          quantity: 12,
-          category: 'Camping',
-          notes: '',
-        },
-      ],
-    },
-  });
+  const app = await createBoxSearchApp({ items: [{ ...defaultItem, notes: '' }] });
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
