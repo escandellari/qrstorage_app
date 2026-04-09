@@ -67,6 +67,25 @@ export function renderBoxConflictMessage(conflictBox, escapeHtml) {
 
 export function renderBoxNotesCounterScript() {
   return `<script>
+        document.addEventListener('click', (event) => {
+          const expandButton = event.target.closest('[data-expand-structured-location]');
+
+          if (!expandButton) {
+            return;
+          }
+
+          const form = expandButton.form;
+          const structuredFields = form?.querySelector('[data-structured-location-fields]');
+          const locationModeField = form?.querySelector('input[name="locationMode"]');
+
+          if (!form || !structuredFields || !locationModeField) {
+            return;
+          }
+
+          structuredFields.hidden = false;
+          locationModeField.value = 'structured';
+        });
+
         document.addEventListener('input', (event) => {
           const notesField = event.target.closest('textarea[name="notes"]');
           const counter = notesField?.form?.querySelector('[data-notes-remaining]');

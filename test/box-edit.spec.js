@@ -29,6 +29,12 @@ test('GET /boxes/:boxCode renders a box edit form with simple location by defaul
     assert.match(html, /name="locationRoom"/i);
     assert.match(html, /name="locationArea"/i);
     assert.match(html, /name="locationShelf"/i);
+    assert.match(html, /data-expand-structured-location/i);
+    assert.match(html, /document\.addEventListener\('click'/i);
+    assert.match(html, /closest\('\[data-expand-structured-location\]'\)/i);
+    assert.match(html, /querySelector\('input\[name="locationMode"\]'\)/i);
+    assert.match(html, /structuredFields\.hidden = false/i);
+    assert.match(html, /locationModeField\.value = 'structured'/i);
   } finally {
     await app.close();
   }
