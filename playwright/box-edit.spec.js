@@ -28,10 +28,12 @@ test('member can edit a box from the React page and see updated details after sa
     await app.signInToInventory(page);
     await page.goto(`${app.baseUrl}/boxes/BOX-0042`);
 
-    await page.getByLabel('Box name').fill('Winter Camping Kit');
-    await page.getByLabel('Location').fill('Hall cupboard');
-    await page.getByLabel('Notes').fill('Spare gloves moved to the lid pocket.');
-    await page.getByRole('button', { name: 'Save box details' }).click();
+    const boxForm = page.locator('form[action="/boxes/BOX-0042"]');
+
+    await boxForm.getByLabel('Box name').fill('Winter Camping Kit');
+    await boxForm.getByLabel('Location').fill('Hall cupboard');
+    await boxForm.getByLabel('Notes').fill('Spare gloves moved to the lid pocket.');
+    await boxForm.getByRole('button', { name: 'Save box details' }).click();
 
     await expect(page.locator('[data-react-screen="box-page"]')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Winter Camping Kit', exact: true })).toBeVisible();

@@ -201,7 +201,9 @@ test('POST /boxes/:boxCode/items with invalid input re-renders inline plain-lang
       const html = await response.text();
 
       assert.equal(response.status, 200);
+      assert.match(html, /data-react-screen="box-page"/i);
       assert.match(html, /<form[^>]*action="\/boxes\/BOX-0042\/items"/i);
+      assert.match(html, /Item name/i);
       assert.match(html, testCase.expectedError);
       assert.doesNotMatch(html, /<strong>Tent pegs<\/strong>/);
     }
@@ -296,6 +298,7 @@ test('a box with 500 items blocks further additions with a clear message', async
     const pageHtml = await pageResponse.text();
 
     assert.equal(pageResponse.status, 200);
+    assert.match(pageHtml, /data-react-screen="box-page"/i);
     assert.match(pageHtml, /This box already has 500 items\. Remove an item before adding another\./i);
 
     const createResponse = await fetch(`${app.baseUrl}/boxes/BOX-0042/items`, {
@@ -314,6 +317,7 @@ test('a box with 500 items blocks further additions with a clear message', async
     const createHtml = await createResponse.text();
 
     assert.equal(createResponse.status, 200);
+    assert.match(createHtml, /data-react-screen="box-page"/i);
     assert.match(createHtml, /This box already has 500 items\. Remove an item before adding another\./i);
     assert.doesNotMatch(createHtml, /Overflow item/);
   } finally {

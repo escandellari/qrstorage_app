@@ -1,6 +1,6 @@
 import { findActiveWorkspaceBox, findWorkspaceBoxByCode, getBoxCodeFromPath, getBoxPath, isArchivedBox } from './box-utils.js';
 import { getBoxDetailsValues, getBoxEditValues, getOriginalBoxDetailsValues, getStoredBoxDetails, hasSimilarBoxName } from './box-details.js';
-import { renderBoxPage, validateBoxInput } from './pages.js';
+import { validateBoxInput } from './pages.js';
 import { renderActiveBoxPage, renderArchivedBoxPage } from './box-page-ui/renderBoxPage.js';
 import { validateItemInput } from './item-utils.js';
 import { getBoxPageOptions, getCreateItemInput, getItemValues, getOriginalItemValues, getUpdateItemInput, isBoxAtItemLimit } from './box-items.js';
@@ -52,12 +52,12 @@ export async function handleCreateBoxItemRequest({
   const boxPageOptions = await getBoxPageOptions(store, box);
 
   if (isBoxAtItemLimit(boxPageOptions.items)) {
-    sendHtml(response, 200, renderBoxPage(box, boxPageOptions));
+    sendHtml(response, 200, renderActiveBoxPage(box, boxPageOptions));
     return;
   }
 
   if (Object.keys(errors).length > 0) {
-    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, itemValues, itemErrors: errors }));
+    sendHtml(response, 200, renderActiveBoxPage(box, { ...boxPageOptions, itemValues, itemErrors: errors }));
     return;
   }
 
@@ -65,7 +65,7 @@ export async function handleCreateBoxItemRequest({
 
   if (!createdItem) {
     const updatedBoxPageOptions = await getBoxPageOptions(store, box);
-    sendHtml(response, 200, renderBoxPage(box, updatedBoxPageOptions));
+    sendHtml(response, 200, renderActiveBoxPage(box, updatedBoxPageOptions));
     return;
   }
 
@@ -102,7 +102,7 @@ export async function handleUpdateBoxItemRequest({
     sendHtml(
       response,
       200,
-      renderBoxPage(box, {
+      renderActiveBoxPage(box, {
         ...boxPageOptions,
         editItemId: itemId,
         editItemValues: itemValues,
@@ -116,7 +116,7 @@ export async function handleUpdateBoxItemRequest({
   const updateResult = await store.updateItem(box.id, itemId, getUpdateItemInput(itemValues), getUpdateItemInput(originalItemValues));
 
   if (updateResult.status === 'deleted') {
-    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, removedItemMessage: 'This item was removed before you could save your changes.' }));
+    sendHtml(response, 200, renderActiveBoxPage(box, { ...boxPageOptions, removedItemMessage: 'This item was removed before you could save your changes.' }));
     return;
   }
 
@@ -124,7 +124,7 @@ export async function handleUpdateBoxItemRequest({
     sendHtml(
       response,
       200,
-      renderBoxPage(box, {
+      renderActiveBoxPage(box, {
         ...boxPageOptions,
         editItemId: itemId,
         editItemValues: itemValues,
