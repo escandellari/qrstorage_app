@@ -81,6 +81,26 @@ test('PATCH /boxes/:boxCode/items/:itemId with invalid data re-renders inline er
   }
 });
 
+test('GET /boxes/:boxCode shows edit and delete controls for existing items', async () => {
+  const app = await createBoxItemsTestApp();
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(html, /<form[^>]*action="\/boxes\/BOX-0042\/items\/item-1"/i);
+    assert.match(html, /Save changes/i);
+    assert.match(html, /<form[^>]*action="\/boxes\/BOX-0042\/items\/item-1\/delete"/i);
+    assert.match(html, /Delete item/i);
+  } finally {
+    await app.close();
+  }
+});
+
 test('editing another item on the same box page still saves when a different item changed first', async () => {
   const app = await createBoxItemsTestApp({
     members: workspaceMembers,

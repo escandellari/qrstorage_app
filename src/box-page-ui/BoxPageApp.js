@@ -36,7 +36,7 @@ function BoxActions({ boxCode, labelPath, showArchiveAction }) {
   );
 }
 
-function ItemDetails({ item }) {
+function ItemDetails({ boxCode, item }) {
   const details = [
     item.quantity ? `Quantity: ${item.quantity}` : '',
     item.category ? `Category: ${item.category}` : '',
@@ -44,16 +44,36 @@ function ItemDetails({ item }) {
   ]
     .filter(Boolean)
     .join(' · ');
+  const quantityValue = item.quantity ? String(item.quantity) : '';
 
   return React.createElement(
     'li',
     null,
     React.createElement('strong', null, item.name),
     details ? React.createElement('div', null, details) : null,
+    React.createElement(
+      'form',
+      { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}/items/${encodeURIComponent(item.id)}` },
+      React.createElement('input', { type: 'text', name: 'name', defaultValue: item.name ?? '' }),
+      React.createElement('input', { type: 'text', name: 'quantity', inputMode: 'numeric', defaultValue: quantityValue }),
+      React.createElement('input', { type: 'text', name: 'category', defaultValue: item.category ?? '' }),
+      React.createElement('textarea', { name: 'notes', defaultValue: item.notes ?? '' }),
+      React.createElement('input', { type: 'hidden', name: '_method', value: 'PATCH' }),
+      React.createElement('input', { type: 'hidden', name: 'originalName', value: item.name ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalQuantity', value: quantityValue }),
+      React.createElement('input', { type: 'hidden', name: 'originalCategory', value: item.category ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalNotes', value: item.notes ?? '' }),
+      React.createElement('button', { type: 'submit', formMethod: 'post' }, 'Save changes'),
+    ),
+    React.createElement(
+      'form',
+      { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}/items/${encodeURIComponent(item.id)}/delete` },
+      React.createElement('button', { type: 'submit' }, 'Delete item'),
+    ),
   );
 }
 
-function BoxEditSection({ boxCode, boxValues }) {
+function BoxEditSection({ boxCode, boxValues, boxOriginalValues }) {
   const structuredFieldsHidden = boxValues.locationMode !== 'structured';
 
   return React.createElement(
@@ -77,13 +97,21 @@ function BoxEditSection({ boxCode, boxValues }) {
       React.createElement('textarea', { name: 'notes', defaultValue: boxValues.notes ?? '' }),
       React.createElement('p', { 'data-notes-remaining': true }, `${MAX_BOX_NOTES_LENGTH - String(boxValues.notes ?? '').length} characters remaining`),
       React.createElement('input', { type: 'hidden', name: 'locationMode', value: boxValues.locationMode ?? 'simple' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxName', value: boxOriginalValues.name ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocation', value: boxOriginalValues.location ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxNotes', value: boxOriginalValues.notes ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationMode', value: boxOriginalValues.locationMode ?? 'simple' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationSite', value: boxOriginalValues.locationSite ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationRoom', value: boxOriginalValues.locationRoom ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationArea', value: boxOriginalValues.locationArea ?? '' }),
+      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationShelf', value: boxOriginalValues.locationShelf ?? '' }),
       React.createElement('input', { type: 'hidden', name: '_method', value: 'PATCH' }),
       React.createElement('button', { type: 'submit' }, 'Save box details'),
     ),
   );
 }
 
-function ItemAreaShell({ boxCode, boxValues, items = [], emptyPrompt = '', itemLimitMessage = '', archived = false }) {
+function ItemAreaShell({ boxCode, boxValues, boxOriginalValues, items = [], emptyPrompt = '', itemLimitMessage = '', archived = false }) {
   return React.createElement(
     React.Fragment,
     null,
@@ -95,14 +123,14 @@ function ItemAreaShell({ boxCode, boxValues, items = [], emptyPrompt = '', itemL
         ? React.createElement('p', null, 'This box is archived. Restore it to edit its contents.')
         : items.length === 0
           ? React.createElement('p', null, emptyPrompt)
-          : React.createElement('ul', null, items.map((item) => React.createElement(ItemDetails, { key: item.id, item }))),
+          : React.createElement('ul', null, items.map((item) => React.createElement(ItemDetails, { key: item.id, boxCode, item }))),
     ),
     archived
       ? null
       : React.createElement(
           React.Fragment,
           null,
-          React.createElement(BoxEditSection, { boxCode, boxValues }),
+          React.createElement(BoxEditSection, { boxCode, boxValues, boxOriginalValues }),
           React.createElement(
             'section',
             null,
@@ -160,6 +188,7 @@ function BoxPage({ pageModel }) {
       items: pageModel.items,
       emptyPrompt: pageModel.emptyPrompt,
       itemLimitMessage: pageModel.itemLimitMessage,
+      boxOriginalValues: pageModel.boxOriginalValues,
       archived: pageModel.state === 'archived',
     }),
   );

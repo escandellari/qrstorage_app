@@ -30,6 +30,7 @@ function getBasePageModel(box, options = {}) {
     emptyPrompt: EMPTY_PROMPT,
     itemLimitMessage: options.itemLimitMessage ?? '',
     boxValues: options.boxValues ?? getBoxEditValues(box),
+    boxOriginalValues: options.boxOriginalValues ?? getBoxEditValues(box),
   };
 }
 
