@@ -32,6 +32,11 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       return data.workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
     },
 
+    async listMembersByWorkspaceId(workspaceId) {
+      const data = await readData();
+      return data.members.filter((member) => member.workspaceId === workspaceId);
+    },
+
     async createMagicLink(email, memberId, expiresAt, returnTo = '/inventory', inviteToken = null) {
       const data = await readData();
       const record = {
@@ -143,6 +148,21 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       data.sessions.push(session);
       await writeData(data);
       return session;
+    },
+
+    async removeMember(memberId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const memberIndex = data.members.findIndex((member) => member.id === memberId);
+
+        if (memberIndex < 0) {
+          return null;
+        }
+
+        const [member] = data.members.splice(memberIndex, 1);
+        await writeData(data);
+        return member;
+      });
     },
 
     async updateSessionWorkspace(sessionId, activeWorkspaceId) {

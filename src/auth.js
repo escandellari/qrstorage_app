@@ -20,13 +20,13 @@ export async function getRequestContext(store, request) {
   const session = cookies.session ? await store.findSession(cookies.session) : null;
   const identityMember = session ? await store.findMemberById(session.memberId) : null;
   const activeWorkspaceId = session?.activeWorkspaceId ?? identityMember?.workspaceId ?? null;
-  const workspace = activeWorkspaceId ? await store.findWorkspaceById(activeWorkspaceId) : null;
   const member =
     identityMember && activeWorkspaceId
       ? (identityMember.workspaceId === activeWorkspaceId
           ? identityMember
           : await store.findMemberByEmailAndWorkspaceId(identityMember.email, activeWorkspaceId))
       : null;
+  const workspace = member?.workspaceId ? await store.findWorkspaceById(member.workspaceId) : null;
 
   return { session, member, workspace, identityMember };
 }
@@ -57,9 +57,9 @@ export async function getPostAuthRedirectPath(store, returnToPath) {
 }
 
 export async function requireWorkspace(store, request, response, redirect) {
-  const { workspace } = await getRequestContext(store, request);
+  const { member, workspace } = await getRequestContext(store, request);
 
-  if (!workspace) {
+  if (!workspace || !member) {
     redirect(response, '/sign-in');
     return null;
   }
