@@ -4,11 +4,13 @@ import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID } from './constants.j
 import { renderInventoryHomeApp } from '../inventory-home-ui/InventoryHomeApp.js';
 import { renderInventorySearchApp } from '../search-ui/InventorySearchApp.js';
 import { renderBoxPageApp } from '../box-page-ui/BoxPageApp.js';
+import { renderAccessRecoveryApp } from '../box-access-ui/AccessRecoveryApp.js';
 
 const renderers = {
   'inventory-home': renderInventoryHomeApp,
   'inventory-search': renderInventorySearchApp,
   'box-page': renderBoxPageApp,
+  'box-access-recovery': renderAccessRecoveryApp,
 };
 
 function readPageModel(id) {
