@@ -12,7 +12,6 @@ import { renderInventoryShell } from './react-shell/renderInventoryShell.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
-  renderInventoryPage,
   renderInviteErrorPage,
   renderLabelPage,
   renderMagicLinkErrorPage,
@@ -79,7 +78,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         sendHtml(
           response,
           200,
-          renderInventoryPage(workspace, {}, {}, { inviteValues: { email }, inviteError: 'Only the workspace owner can send invites. Contact the owner for access.' }),
+          renderInventoryShell(workspace, {
+            inviteValues: { email },
+            inviteError: 'Only the workspace owner can send invites. Contact the owner for access.',
+          }),
         );
         return;
       }
@@ -90,7 +92,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         to: email,
         inviteUrl: `/invites/${invite.token}`,
       });
-      sendHtml(response, 200, renderInventoryPage(workspace, {}, {}, { inviteMessage: 'Invite sent.', inviteValues: { email: '' } }));
+      sendHtml(response, 200, renderInventoryShell(workspace, { inviteMessage: 'Invite sent.', inviteValues: { email: '' } }));
       return;
     }
 
@@ -140,7 +142,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       const errors = validateBoxInput({ name, notes });
 
       if (Object.keys(errors).length > 0) {
-        sendHtml(response, 200, renderInventoryPage(workspace, { name, location, notes }, errors));
+        sendHtml(response, 200, renderInventoryShell(workspace, { boxValues: { name, location, notes }, boxErrors: errors }));
         return;
       }
 

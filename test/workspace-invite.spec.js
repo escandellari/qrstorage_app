@@ -11,6 +11,9 @@ test('POST /workspace/invites as an owner sends one workspace invite email', asy
     const html = await response.text();
 
     assert.equal(response.status, 200);
+    assert.match(html, /data-react-shell="inventory"/);
+    assert.match(html, /<link rel="stylesheet" href="\/assets\/react-shell\.css" \/>/);
+    assert.match(html, /<script type="module" src="\/assets\/react-shell\.js"><\/script>/);
     assert.match(html, /invite sent/i);
 
     const emails = app.server.getSentEmails();
@@ -47,6 +50,9 @@ test('POST /workspace/invites as a member shows a friendly owner-only permission
     const html = await response.text();
 
     assert.equal(response.status, 200);
+    assert.match(html, /data-react-shell="inventory"/);
+    assert.match(html, /<link rel="stylesheet" href="\/assets\/react-shell\.css" \/>/);
+    assert.match(html, /<script type="module" src="\/assets\/react-shell\.js"><\/script>/);
     assert.match(html, /only the workspace owner can send invites/i);
     assert.match(html, /contact the owner for access/i);
     assert.equal(app.server.getSentEmails().length, 1);

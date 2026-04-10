@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { renderPage, renderPageModelScript } from '../html.js';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID, REACT_SHELL_ASSET_PATHS } from './constants.js';
 
-function InventoryShell({ workspaceName }) {
+function InventoryShell({ workspaceName, boxValues = {}, boxErrors = {}, inviteValues = {}, inviteMessage = '', inviteError = '' }) {
   return React.createElement(
     'main',
     {
@@ -61,9 +61,11 @@ function InventoryShell({ workspaceName }) {
               name: 'name',
               maxLength: 80,
               required: true,
+              defaultValue: boxValues.name ?? '',
               className: 'w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white',
             }),
           ),
+          boxErrors.name ? React.createElement('p', { className: 'text-sm text-rose-300' }, boxErrors.name) : null,
           React.createElement(
             'label',
             { className: 'block text-sm text-slate-200' },
@@ -71,6 +73,7 @@ function InventoryShell({ workspaceName }) {
             React.createElement('input', {
               type: 'text',
               name: 'location',
+              defaultValue: boxValues.location ?? '',
               className: 'w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white',
             }),
           ),
@@ -81,9 +84,11 @@ function InventoryShell({ workspaceName }) {
             React.createElement('textarea', {
               name: 'notes',
               maxLength: 1000,
+              defaultValue: boxValues.notes ?? '',
               className: 'min-h-24 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white',
             }),
           ),
+          boxErrors.notes ? React.createElement('p', { className: 'text-sm text-rose-300' }, boxErrors.notes) : null,
           React.createElement('button', { type: 'submit', className: 'rounded-xl bg-emerald-400 px-4 py-2 font-medium text-slate-950' }, 'Create box'),
         ),
       ),
@@ -91,6 +96,8 @@ function InventoryShell({ workspaceName }) {
         'section',
         { className: 'rounded-2xl bg-slate-900 p-4 shadow-sm ring-1 ring-slate-800' },
         React.createElement('h2', { className: 'text-lg font-semibold text-white' }, 'Invite people'),
+        inviteMessage ? React.createElement('p', { className: 'text-sm text-emerald-300' }, inviteMessage) : null,
+        inviteError ? React.createElement('p', { className: 'text-sm text-rose-300' }, inviteError) : null,
         React.createElement(
           'form',
           { method: 'post', action: '/workspace/invites', className: 'mt-3 space-y-3' },
@@ -103,6 +110,7 @@ function InventoryShell({ workspaceName }) {
               name: 'email',
               autoComplete: 'email',
               required: true,
+              defaultValue: inviteValues.email ?? '',
               className: 'w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-white',
             }),
           ),
@@ -119,8 +127,15 @@ function InventoryShell({ workspaceName }) {
   );
 }
 
-export function renderInventoryShell(workspace) {
-  const pageModel = { workspaceName: workspace.name };
+export function renderInventoryShell(workspace, options = {}) {
+  const pageModel = {
+    workspaceName: workspace.name,
+    boxValues: options.boxValues ?? {},
+    boxErrors: options.boxErrors ?? {},
+    inviteValues: options.inviteValues ?? {},
+    inviteMessage: options.inviteMessage ?? '',
+    inviteError: options.inviteError ?? '',
+  };
   const body = renderToString(React.createElement(InventoryShell, pageModel));
 
   return renderPage({
