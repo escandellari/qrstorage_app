@@ -143,7 +143,7 @@ test('GET /inventory/search shows compact result context and excludes another wo
   }
 });
 
-test('GET /inventory/search shows an empty state with the searched term and reset action when there are no matches', async () => {
+test('GET /inventory/search shows an empty state with the searched term and a way back to inventory when there are no matches', async () => {
   const app = await createTestServer({ seedData: defaultSeedData });
 
   try {
@@ -157,7 +157,7 @@ test('GET /inventory/search shows an empty state with the searched term and rese
     assert.match(html, /No matches/i);
     assert.match(html, /No matches for “missing”\./i);
     assert.match(html, /href="\/inventory"/i);
-    assert.match(html, /Reset search/i);
+    assert.match(html, /Back to inventory/i);
   } finally {
     await app.close();
   }

@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { createDataStore } from './data-store.js';
 import { getBoxPath } from './box-utils.js';
 import { searchInventory } from './inventory-search.js';
-import { renderInventorySearchPage } from './inventory-search-view.js';
+import { renderInventorySearchPage } from './search-ui/renderInventorySearchPage.js';
 import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
 import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
 import { handleWorkspaceMemberRoutes } from './workspace-members-routes.js';
