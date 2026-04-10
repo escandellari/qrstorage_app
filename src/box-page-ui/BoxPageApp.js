@@ -1,5 +1,5 @@
 import React from 'react';
-import { MAX_BOX_NOTES_LENGTH } from '../box-details.js';
+import { renderBoxEditorState } from '../box-editor-ui/renderBoxEditorState.js';
 
 function DetailRow({ label, value }) {
   return React.createElement(
@@ -73,45 +73,19 @@ function ItemDetails({ boxCode, item }) {
   );
 }
 
-function BoxEditSection({ boxCode, boxValues, boxOriginalValues }) {
-  const structuredFieldsHidden = boxValues.locationMode !== 'structured';
 
-  return React.createElement(
-    'section',
-    null,
-    React.createElement('h2', null, 'Edit box details'),
-    React.createElement(
-      'form',
-      { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}` },
-      React.createElement('input', { type: 'text', name: 'name', defaultValue: boxValues.name ?? '' }),
-      React.createElement('input', { type: 'text', name: 'location', defaultValue: boxValues.location ?? '' }),
-      React.createElement('button', { type: 'button', 'data-expand-structured-location': true }, 'Use structured location'),
-      React.createElement(
-        'div',
-        structuredFieldsHidden ? { 'data-structured-location-fields': true, hidden: true } : { 'data-structured-location-fields': true },
-        React.createElement('input', { type: 'text', name: 'locationSite', defaultValue: boxValues.locationSite ?? '' }),
-        React.createElement('input', { type: 'text', name: 'locationRoom', defaultValue: boxValues.locationRoom ?? '' }),
-        React.createElement('input', { type: 'text', name: 'locationArea', defaultValue: boxValues.locationArea ?? '' }),
-        React.createElement('input', { type: 'text', name: 'locationShelf', defaultValue: boxValues.locationShelf ?? '' }),
-      ),
-      React.createElement('textarea', { name: 'notes', defaultValue: boxValues.notes ?? '' }),
-      React.createElement('p', { 'data-notes-remaining': true }, `${MAX_BOX_NOTES_LENGTH - String(boxValues.notes ?? '').length} characters remaining`),
-      React.createElement('input', { type: 'hidden', name: 'locationMode', value: boxValues.locationMode ?? 'simple' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxName', value: boxOriginalValues.name ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocation', value: boxOriginalValues.location ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxNotes', value: boxOriginalValues.notes ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationMode', value: boxOriginalValues.locationMode ?? 'simple' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationSite', value: boxOriginalValues.locationSite ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationRoom', value: boxOriginalValues.locationRoom ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationArea', value: boxOriginalValues.locationArea ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalBoxLocationShelf', value: boxOriginalValues.locationShelf ?? '' }),
-      React.createElement('input', { type: 'hidden', name: '_method', value: 'PATCH' }),
-      React.createElement('button', { type: 'submit' }, 'Save box details'),
-    ),
-  );
-}
-
-function ItemAreaShell({ boxCode, boxValues, boxOriginalValues, items = [], emptyPrompt = '', itemLimitMessage = '', archived = false }) {
+function ItemAreaShell({
+  boxCode,
+  boxValues,
+  boxOriginalValues,
+  boxErrors,
+  boxWarning,
+  conflictBox,
+  items = [],
+  emptyPrompt = '',
+  itemLimitMessage = '',
+  archived = false,
+}) {
   return React.createElement(
     React.Fragment,
     null,
@@ -130,7 +104,7 @@ function ItemAreaShell({ boxCode, boxValues, boxOriginalValues, items = [], empt
       : React.createElement(
           React.Fragment,
           null,
-          React.createElement(BoxEditSection, { boxCode, boxValues, boxOriginalValues }),
+          renderBoxEditorState({ boxCode, boxValues, boxOriginalValues, boxErrors, boxWarning, conflictBox }),
           React.createElement(
             'section',
             null,
@@ -189,6 +163,9 @@ function BoxPage({ pageModel }) {
       emptyPrompt: pageModel.emptyPrompt,
       itemLimitMessage: pageModel.itemLimitMessage,
       boxOriginalValues: pageModel.boxOriginalValues,
+      boxErrors: pageModel.boxErrors,
+      boxWarning: pageModel.boxWarning,
+      conflictBox: pageModel.conflictBox,
       archived: pageModel.state === 'archived',
     }),
   );
