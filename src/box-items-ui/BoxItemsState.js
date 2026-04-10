@@ -4,25 +4,36 @@ function FieldLabel({ text, input }) {
   return React.createElement('label', null, text, input);
 }
 
+function getItemSummary(item) {
+  return [
+    item.name,
+    item.quantity ? `Quantity: ${item.quantity}` : '',
+    item.category ? `Category: ${item.category}` : '',
+    item.notes ? `Notes: ${item.notes}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+function getItemFormValues(item) {
+  return {
+    name: item.name ?? '',
+    quantity: item.quantity ? String(item.quantity) : '',
+    category: item.category ?? '',
+    notes: item.notes ?? '',
+  };
+}
+
 function ItemConflictMessage({ conflictItem }) {
   if (!conflictItem) {
     return null;
   }
 
-  const latestSavedItem = [
-    conflictItem.name,
-    conflictItem.quantity ? `Quantity: ${conflictItem.quantity}` : '',
-    conflictItem.category ? `Category: ${conflictItem.category}` : '',
-    conflictItem.notes ? `Notes: ${conflictItem.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
   return React.createElement(
     'div',
     null,
     React.createElement('p', null, 'This item was updated by someone else.'),
-    React.createElement('p', null, `Latest saved item: ${latestSavedItem}`),
+    React.createElement('p', null, `Latest saved item: ${getItemSummary(conflictItem)}`),
   );
 }
 
@@ -66,32 +77,10 @@ function ItemFormFields({ values = {}, errors = {}, submitLabel, originalValues 
 }
 
 function ItemDetails({ boxCode, item, editItemId, editItemValues, editItemErrors, editOriginalItemValues, conflictItemId, conflictItem }) {
-  const details = [
-    item.quantity ? `Quantity: ${item.quantity}` : '',
-    item.category ? `Category: ${item.category}` : '',
-    item.notes ? `Notes: ${item.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const itemValues =
-    item.id === editItemId
-      ? editItemValues
-      : {
-          name: item.name ?? '',
-          quantity: item.quantity ? String(item.quantity) : '',
-          category: item.category ?? '',
-          notes: item.notes ?? '',
-        };
+  const details = getItemSummary({ ...item, name: '' });
+  const itemValues = item.id === editItemId ? editItemValues : getItemFormValues(item);
   const itemErrors = item.id === editItemId ? editItemErrors : {};
-  const originalValues =
-    item.id === editItemId
-      ? editOriginalItemValues
-      : {
-          name: item.name ?? '',
-          quantity: item.quantity ? String(item.quantity) : '',
-          category: item.category ?? '',
-          notes: item.notes ?? '',
-        };
+  const originalValues = item.id === editItemId ? editOriginalItemValues : getItemFormValues(item);
 
   return React.createElement(
     'li',
