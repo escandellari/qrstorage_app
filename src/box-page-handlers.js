@@ -15,6 +15,18 @@ async function findViewableWorkspaceBox(store, workspaceId, pathname) {
   return findWorkspaceBoxByCode(store, workspaceId, boxCode);
 }
 
+async function handleActiveBoxAction({ store, workspaceId, pathname, response, redirect, sendNotFound }, callback) {
+  const box = await findWorkspaceBox(store, workspaceId, pathname);
+
+  if (!box) {
+    sendNotFound(response);
+    return;
+  }
+
+  const redirectBoxCode = await callback(box);
+  redirect(response, getBoxPath(redirectBoxCode));
+}
+
 export async function handleCreateBoxItemRequest({
   store,
   workspaceId,
@@ -208,27 +220,17 @@ export async function handleUpdateBoxRequest({
 }
 
 export async function handleDuplicateBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
-  const box = await findWorkspaceBox(store, workspaceId, pathname);
-
-  if (!box) {
-    sendNotFound(response);
-    return;
-  }
-
-  const duplicatedBox = await store.duplicateBox(box.id);
-  redirect(response, getBoxPath(duplicatedBox.boxCode));
+  await handleActiveBoxAction({ store, workspaceId, pathname, response, redirect, sendNotFound }, async (box) => {
+    const duplicatedBox = await store.duplicateBox(box.id);
+    return duplicatedBox.boxCode;
+  });
 }
 
 export async function handleArchiveBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
-  const box = await findWorkspaceBox(store, workspaceId, pathname);
-
-  if (!box) {
-    sendNotFound(response);
-    return;
-  }
-
-  await store.archiveBox(box.id);
-  redirect(response, getBoxPath(box.boxCode));
+  await handleActiveBoxAction({ store, workspaceId, pathname, response, redirect, sendNotFound }, async (box) => {
+    await store.archiveBox(box.id);
+    return box.boxCode;
+  });
 }
 
 export async function handleRestoreBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
