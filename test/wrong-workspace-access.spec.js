@@ -139,3 +139,18 @@ test('GET /boxes/:boxCode without target-workspace membership shows a request-in
     await app.close();
   }
 });
+
+test('GET /workspace/request-invite redirects unauthenticated users to sign-in', async () => {
+  const app = await createWrongWorkspaceApp();
+
+  try {
+    const response = await fetch(`${app.baseUrl}/workspace/request-invite`, {
+      redirect: 'manual',
+    });
+
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.get('location'), '/sign-in');
+  } finally {
+    await app.close();
+  }
+});

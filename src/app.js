@@ -11,7 +11,7 @@ import { handleReactShellAssetRequest } from './react-shell/assets.js';
 import { renderInventoryHome } from './inventory-home-ui/renderInventoryHome.js';
 import { handleAuthRoutes } from './auth-ui/handleAuthRoutes.js';
 import { renderBoxNotFoundPage, renderLabelPage, validateBoxInput } from './pages.js';
-import { renderAccessDeniedPage, renderRequestInvitePage } from './access-denied-view.js';
+import { renderRequestInvitePage, renderWrongWorkspaceRecovery } from './box-access-ui/renderAccessRecovery.js';
 import { renderWorkspaceMembersAccessDeniedPage, renderWorkspaceMembersPage } from './workspace-members-view.js';
 import { normalizeBaseUrl, readFormBody, redirect, sendHtml, sendNotFound } from './http.js';
 import { getPostAuthRedirectPath, getRequestContext, getValidatedReturnToPath, requireWorkspace } from './auth.js';
@@ -194,7 +194,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         readFormBody,
         sendHtml,
         sendNotFound,
-        renderAccessDeniedPage,
+        renderAccessDeniedPage: renderWrongWorkspaceRecovery,
       })
     ) {
       return;
