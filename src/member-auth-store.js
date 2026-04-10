@@ -1,10 +1,30 @@
 import { randomUUID } from 'node:crypto';
 
+async function updateSessionField(readData, writeData, withMutationLock, sessionId, field, value) {
+  return withMutationLock(async () => {
+    const data = await readData();
+    const session = data.sessions.find((record) => record.id === sessionId);
+
+    if (!session) {
+      return null;
+    }
+
+    session[field] = value;
+    await writeData(data);
+    return { ...session };
+  });
+}
+
 export function createMemberAuthStore({ readData, writeData, withMutationLock }) {
   return {
     async findMemberByEmail(email) {
       const data = await readData();
       return data.members.find((member) => member.email.toLowerCase() === email.toLowerCase()) ?? null;
+    },
+
+    async findMemberByEmailAndWorkspaceId(email, workspaceId) {
+      const data = await readData();
+      return data.members.find((member) => member.workspaceId === workspaceId && member.email.toLowerCase() === email.toLowerCase()) ?? null;
     },
 
     async findWorkspaceById(workspaceId) {
@@ -113,15 +133,24 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       });
     },
 
-    async createSession(memberId) {
+    async createSession(memberId, activeWorkspaceId = null) {
       const data = await readData();
       const session = {
         id: randomUUID(),
         memberId,
+        activeWorkspaceId,
       };
       data.sessions.push(session);
       await writeData(data);
       return session;
+    },
+
+    async updateSessionWorkspace(sessionId, activeWorkspaceId) {
+      return updateSessionField(readData, writeData, withMutationLock, sessionId, 'activeWorkspaceId', activeWorkspaceId);
+    },
+
+    async updateSessionPendingReturnTo(sessionId, pendingReturnToPath) {
+      return updateSessionField(readData, writeData, withMutationLock, sessionId, 'pendingReturnToPath', pendingReturnToPath);
     },
 
     async findSession(sessionId) {

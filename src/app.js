@@ -5,6 +5,7 @@ import { getBoxPath } from './box-utils.js';
 import { searchInventory } from './inventory-search.js';
 import { renderInventorySearchPage } from './inventory-search-view.js';
 import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
+import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -15,6 +16,7 @@ import {
   renderSignInPage,
   validateBoxInput,
 } from './pages.js';
+import { renderAccessDeniedPage, renderRequestInvitePage } from './access-denied-view.js';
 import { normalizeBaseUrl, readFormBody, redirect, sendHtml, sendNotFound } from './http.js';
 import { getPostAuthRedirectPath, getRequestContext, getValidatedReturnToPath, requireWorkspace } from './auth.js';
 
@@ -85,6 +87,22 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
+    if (
+      await handleWorkspaceAccessRoutes({
+        store,
+        request,
+        response,
+        pathname: url.pathname,
+        getRequestContext,
+        readFormBody,
+        redirect,
+        sendHtml,
+        renderRequestInvitePage,
+      })
+    ) {
+      return;
+    }
+
     if (request.method === 'POST' && url.pathname === '/boxes') {
       const workspace = await requireWorkspace(store, request, response, redirect);
 
@@ -152,10 +170,12 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         pathname: url.pathname,
         method: request.method,
         requireWorkspace,
+        getRequestContext,
         redirect,
         readFormBody,
         sendHtml,
         sendNotFound,
+        renderAccessDeniedPage,
       })
     ) {
       return;
@@ -239,7 +259,8 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         redirectPath = invite.returnTo ?? redirectPath;
       }
 
-      const session = await store.createSession(memberId);
+      const activeWorkspaceId = memberId ? (await store.findMemberById(memberId))?.workspaceId ?? null : null;
+      const session = await store.createSession(memberId, activeWorkspaceId);
       redirect(response, redirectPath, {
         'set-cookie': `session=${session.id}; Path=/; HttpOnly; SameSite=Lax`,
       });
