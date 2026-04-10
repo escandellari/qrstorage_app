@@ -2,28 +2,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
 
+function createWrongWorkspaceSeedData({ includeTargetMembership = true, items = [] } = {}) {
+  return {
+    ...defaultSeedData,
+    workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
+    members: includeTargetMembership
+      ? [...defaultSeedData.members, { id: 'member-2', email: 'owner@example.com', workspaceId: 'workspace-2', role: 'owner' }]
+      : defaultSeedData.members,
+    boxes: [
+      {
+        id: 'box-1',
+        workspaceId: 'workspace-2',
+        boxCode: 'BOX-0042',
+        name: 'Camping Kit',
+        locationSummary: 'Garage shelf',
+        notes: 'Check stove fuel before summer.',
+        status: 'active',
+      },
+    ],
+    items,
+  };
+}
+
+async function createWrongWorkspaceApp(options) {
+  return createTestServer({ seedData: createWrongWorkspaceSeedData(options) });
+}
+
 test('GET /boxes/:boxCode in the wrong workspace renders an access-denied screen with a switch action', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'owner@example.com', workspaceId: 'workspace-2', role: 'owner' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-2',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
-          status: 'active',
-        },
-      ],
-    },
-  });
+  const app = await createWrongWorkspaceApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
@@ -43,36 +49,17 @@ test('GET /boxes/:boxCode in the wrong workspace renders an access-denied screen
 });
 
 test('GET /boxes/:boxCode in the wrong workspace shows the current workspace name and hides target box metadata', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'owner@example.com', workspaceId: 'workspace-2', role: 'owner' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-2',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
-          status: 'active',
-        },
-      ],
-      items: [
-        {
-          id: 'item-1',
-          boxId: 'box-1',
-          name: 'Fuel canister',
-          quantity: 1,
-          category: 'Camping',
-          notes: 'Full tank',
-        },
-      ],
-    },
+  const app = await createWrongWorkspaceApp({
+    items: [
+      {
+        id: 'item-1',
+        boxId: 'box-1',
+        name: 'Fuel canister',
+        quantity: 1,
+        category: 'Camping',
+        notes: 'Full tank',
+      },
+    ],
   });
 
   try {
@@ -97,27 +84,7 @@ test('GET /boxes/:boxCode in the wrong workspace shows the current workspace nam
 });
 
 test('POST /workspace/switch switches workspace and returns the user to the original box page', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'owner@example.com', workspaceId: 'workspace-2', role: 'owner' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-2',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
-          status: 'active',
-        },
-      ],
-    },
-  });
+  const app = await createWrongWorkspaceApp();
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
@@ -155,23 +122,7 @@ test('POST /workspace/switch switches workspace and returns the user to the orig
 });
 
 test('GET /boxes/:boxCode without target-workspace membership shows a request-invite action instead of a switch action', async () => {
-  const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-2',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
-          status: 'active',
-        },
-      ],
-    },
-  });
+  const app = await createWrongWorkspaceApp({ includeTargetMembership: false });
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');

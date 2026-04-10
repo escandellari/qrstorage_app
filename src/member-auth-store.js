@@ -1,5 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
+async function updateSessionField(readData, writeData, withMutationLock, sessionId, field, value) {
+  return withMutationLock(async () => {
+    const data = await readData();
+    const session = data.sessions.find((record) => record.id === sessionId);
+
+    if (!session) {
+      return null;
+    }
+
+    session[field] = value;
+    await writeData(data);
+    return { ...session };
+  });
+}
+
 export function createMemberAuthStore({ readData, writeData, withMutationLock }) {
   return {
     async findMemberByEmail(email) {
@@ -131,33 +146,11 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
     },
 
     async updateSessionWorkspace(sessionId, activeWorkspaceId) {
-      return withMutationLock(async () => {
-        const data = await readData();
-        const session = data.sessions.find((record) => record.id === sessionId);
-
-        if (!session) {
-          return null;
-        }
-
-        session.activeWorkspaceId = activeWorkspaceId;
-        await writeData(data);
-        return { ...session };
-      });
+      return updateSessionField(readData, writeData, withMutationLock, sessionId, 'activeWorkspaceId', activeWorkspaceId);
     },
 
     async updateSessionPendingReturnTo(sessionId, pendingReturnToPath) {
-      return withMutationLock(async () => {
-        const data = await readData();
-        const session = data.sessions.find((record) => record.id === sessionId);
-
-        if (!session) {
-          return null;
-        }
-
-        session.pendingReturnToPath = pendingReturnToPath;
-        await writeData(data);
-        return { ...session };
-      });
+      return updateSessionField(readData, writeData, withMutationLock, sessionId, 'pendingReturnToPath', pendingReturnToPath);
     },
 
     async findSession(sessionId) {
