@@ -1,164 +1,120 @@
 # Storage Box QR App PRD
 
-## Purpose
-Build a web app with a mobile-friendly browser experience for households and small teams to manage physical storage boxes using QR codes. Each box has a printed QR label. Scanning the label opens that box in the app so users can view and update its contents quickly.
+## Problem Statement
+Households and small teams need a simple way to track what is inside physical storage boxes without typing through long lists or remembering where things were put. The product solves this by giving each box a permanent QR label that opens the right box in a mobile-friendly web app.
 
 ## Goals
-- Let users create and manage boxes and their contents with minimal effort.
 - Make scan-to-open the fastest path to the right box on a phone.
-- Support shared household or team use with low-friction access.
-- Provide a polished MVP suitable for daily personal use.
+- Let shared workspaces create, update, search, and recover box information with minimal friction.
+- Preserve low-friction passwordless access.
+- Deliver the next phase as a React app with a clearer, more polished Tailwind-based interface.
+
+## Technical Direction
+- Project type: mobile-first web app for shared household or team box inventory.
+- Stack and ecosystem: existing Node.js application, with React for application screens and Tailwind CSS for styling.
+- Delivery approach: hybrid migration inside the existing Node app. React owns interactive screens, while the Node server continues to own routing, authentication, redirects, and data mutations.
+- Authentication and sessions: passwordless email magic links with workspace-scoped membership and session switching.
+- Persistence: retain the current file-backed JSON persistence model in this phase.
+- Testing baseline: keep the existing Node integration suite and add Playwright browser coverage for critical user journeys before cutover.
 
 ## Fixed product decisions
 - Platform: web app only, optimised for mobile browsers.
 - QR behaviour: each QR code contains a URL that opens one box page.
-- Connectivity: internet connection required. No offline support in MVP.
+- Connectivity: internet connection required. No offline support in this phase.
 - Users: multiple users can share one household or team workspace.
-- Storage: cloud-backed data.
-- Photos: excluded from MVP.
-- AI features: excluded from MVP.
-- Import and export: excluded from MVP.
+- Storage: cloud-backed behaviour is still the product intent, but this phase does not replace the current persistence model.
+- Photos: excluded.
+- AI features: excluded.
+- Import and export: excluded.
 - Printing: one permanent QR label per box, with reprint support.
-- Search: global search across all user-entered fields.
-- Locations: support simple location entry by default, with an optional fixed structured location mode.
+- Search: global search across saved box and item text.
 - Security: basic shared-workspace security only.
 - Authentication: passwordless email magic links only.
 - Constraints: no subscriptions, no native mobile app, no high-friction login.
+- Route ownership: all user-facing screens that present application content or forms move to React in this phase. Magic-link completion, QR entry, and workspace switching may remain server-handled only where they immediately redirect or show a minimal transitional message.
+- Rollout: production ships as a full cutover to the React UI once parity, regression coverage, and end-to-end verification are complete. Old and new interfaces may coexist only behind an internal development switch before release.
+- Visual direction: a pragmatic Tailwind-based redesign led by product judgement is the source of truth for presentation in this phase.
 
 ## Core user journeys
 
-### Create a box
-A user can create a box by entering a box name and optional supporting details such as location and notes. The system generates a unique box code automatically, creates a QR label for that box, and makes the box available in the shared workspace.
+### Create and maintain a box
+A signed-in member creates a box with a name and optional location and notes, then updates the box later without changing its permanent box code. A member can also archive, restore, or duplicate a box while keeping the original box link stable.
 
-### Manage contents
-A user can open a box page, add items, edit items, remove items, update quantities, assign categories, and edit notes. A box may exist with no items.
+### Manage box contents
+A signed-in member opens a box, adds items, edits item details, removes items, and sees clear feedback for validation problems or edit conflicts. A box can remain empty and should still prompt the next useful action.
 
-### Scan a box
-A user scans a printed QR label with a phone and lands on the correct box page in the browser. The page must be mobile-friendly and immediately useful for viewing and editing contents.
+### Scan a label
+A user scans a printed QR label and lands on the correct box route. If the user is signed out, the product asks them to sign in and returns them to the intended box after authentication.
 
 ### Search inventory
-A user can search across boxes and items from anywhere relevant in the app and open the correct box from the results.
+A user searches across boxes and items, reviews compact ranked results, and opens the correct parent box. Search must stay usable on mobile and support archived results when explicitly requested.
 
-### Print a label
-A user can open a box and print a clean single-label view containing the QR code and the key box identifier details.
+### Share workspace access
+An owner invites another person by email, and the invitee joins through the same magic-link flow. If a signed-in user reaches a box in the wrong workspace, the product offers a safe recovery path without exposing box details.
 
-## Functional requirements
+## Done
+- Passwordless sign-in is live, including neutral email confirmation, expired-link recovery, session creation, and return-to-box behaviour after authentication.
+- Shared workspace access is live, including owner-sent invites, invite acceptance, wrong-workspace recovery, workspace switching, request-invite guidance, and owner-only member management with last-owner protection.
+- Box management is live, including box creation, box detail pages, permanent box codes, box editing, simple and structured location editing, archive and restore, duplicate box, and soft duplicate-name warnings.
+- Box item management is live, including add, edit, delete, empty-box prompts, quantity, category, notes, item limits, and conflict handling that prevents silent overwrites.
+- QR and print flows are live, including permanent scan URLs, scan-to-open routing, and printable single-label pages with QR code, box code, name, and optional location.
+- Inventory search is live, including box and item matches, ranking, pagination, archived filtering, empty states, and links back to the parent box.
 
-### Box management
-- Users can create, view, edit, archive, and restore boxes, subject to access rights.
-- Every box has an automatically generated, unique, human-readable box code.
-- The box code and QR label are permanent for the life of the box and continue to work after renaming, moving, archiving, and restoring.
-- Users can reprint an existing label but cannot replace a box with a different code.
-- Duplicating a box's contents creates a new box with a new box code and new QR label.
-- The box code is visible on the box page, in search results, and on the printed label.
-- A box stores a name, optional location details, and optional notes.
-- Archived boxes remain identifiable but are clearly marked as archived.
+## Next
+This phase converts the existing product into a React web app styled with Tailwind CSS, while preserving all current user-visible behaviour and deep links. The goal is a faster, clearer, more consistent interface rather than new product scope.
 
-### Item management
-- Users can add, edit, and delete items within a box.
-- Each item includes a name and may include quantity, category, and notes.
-- A box can contain up to 500 items.
-- Boxes with no items are valid and show a helpful prompt to add the first item.
+### User stories
+- As a signed-in member, I can use the inventory, box, search, and workspace screens in a React interface that feels fast and touch-friendly on mobile.
+- As a user scanning a QR label, I can still land on the correct box, sign in if required, and return to that box without confusion.
+- As a workspace owner, I can still invite people and manage members from the React app with the same permissions and recovery paths.
+- As a user printing labels, I can still open a clean print view that keeps the QR code and key identifiers readable.
 
-### Location behaviour
-- The default box form uses a simple free-text location field.
-- Users can optionally expand location entry into a structured path with up to four optional levels: site or building, room, storage area, and shelf or position.
-- Structured location levels are fixed for MVP and cannot be customised per workspace.
-- Users are never required to complete both location modes.
-- The box page shows one clear saved location summary.
-- On mobile, structured location entry stays hidden until requested.
-- The saved structured location appears everywhere as one concise summary in order, including on the box page, in search results, and on labels when space allows.
+### Functional requirements
+- The primary application UI must move to React, with Tailwind CSS used as the default styling approach for layout, spacing, typography, form states, navigation, and feedback states.
+- This phase must use a hybrid delivery model inside the existing Node app. React must own interactive application screens, while the Node server must continue to own routing, authentication, redirects, and data mutations.
+- Existing route paths and behaviours must remain stable for inventory, sign-in, magic-link completion, box pages, QR entry, search, invite acceptance, workspace switching, member management, and label printing.
+- All user-facing screens that display application content or forms must move to React, including sign-in entry, inventory, search, box detail and edit states, workspace member management, access-denied and request-invite states, invite acceptance feedback screens, and the label print view.
+- Magic-link completion, QR entry, and workspace switching may remain server-handled endpoints where their role is validation and redirection rather than sustained UI.
+- The React app must support all current box capabilities: create, edit, archive, restore, duplicate, view permanent box codes, and display saved location summaries.
+- The React app must support all current item capabilities: create, edit, delete, view empty states, enforce limits, and show clear validation and conflict feedback.
+- The React app must support all current search capabilities: ranked box and item matches, archived filtering, empty states, and paginated loading.
+- The React app must support all current access capabilities: passwordless sign-in, invite acceptance, owner-only actions, access-denied recovery, and return-to-intended-box behaviour.
+- Visual design must be mobile-first, with clear hierarchy, touch-sized controls, compact search results, and consistent feedback for loading, success, validation, empty, archived, conflict, and access-denied states.
+- The visual source of truth for this phase is a pragmatic Tailwind-based redesign led by product judgement and anchored to the behaviours and states defined in this PRD.
+- Label printing may remain a dedicated print-focused view, but it must align visually with the new design language and preserve QR readability.
 
-### QR code and label behaviour
-- The system generates one QR code per box.
-- Scanning the code opens that box page, not a generic landing page.
-- The box page supports immediate viewing and editing after scan.
-- The printable label includes the QR code, the box code, and the box name if present. It may also include a short location summary if space allows.
-- The print view is clean, readable, and suitable for normal paper or label stock.
+### Edge cases and error handling
+- Deep links to box and QR routes must still work for signed-out users and must return them to the intended box after sign-in.
+- Wrong-workspace access must still hide target box details and offer workspace switching or request-invite guidance.
+- Archived boxes must still open in an archived state that blocks normal editing and offers restore where allowed.
+- Conflict, deleted-item, expired-link, invalid-invite, invalid-box, and no-results states must remain explicit and understandable in the React UI.
+- Mobile layouts must remain usable for long names, long notes, and search result sets that span multiple pages.
 
-### Search behaviour
-- Search is available from the main inventory screen and from a persistent search action on box pages.
-- Search covers box codes, box names, locations, notes, item names, item categories, and item notes.
-- Each result shows whether it is a box or item match, the box code, box name, location, and a short preview of the matched field.
-- Item matches also show the item name and the parent box.
-- Tapping any result opens the relevant box page.
-- Exact box-code and title matches rank ahead of broader matches.
-- Results show the first 50 matches in ranked order and offer load more in batches of 50 when more matches exist.
-- Archived boxes and items in archived boxes are excluded by default and appear only when the user chooses to include archived results.
-- Search results remain compact and scrollable on mobile.
-
-### Shared access
-- Multiple members of one household or team can access the same inventory.
-- Access must be low friction and suitable for non-technical users.
-- The MVP uses two permission levels only: owner and member.
-- Owners can perform all workspace actions, including inviting and removing members.
-- Members can create, edit, archive, restore, and print labels for boxes and items within the workspace.
-- When a member attempts an owner-only action, the app shows a clear permission message and directs them to contact the workspace owner.
-
-## Authentication and access behaviour
-- The MVP uses passwordless email magic links only.
-- A signed-out user who scans a QR code sees a lightweight sign-in screen that explains access is required.
-- After successful sign-in, the user returns directly to the originally scanned box.
-- Invites are email links tied to a specific workspace.
-- A newly invited user confirms their email through the same magic-link flow, joins the intended workspace, and lands directly on the intended box or inventory screen.
-- A user signed in to the wrong household or team sees a clear access-denied screen that names the current workspace.
-- Where possible, the user can switch workspace from that screen. Otherwise, they are prompted to request an invite.
-- An expired or invalid invite opens a dedicated error screen with a clear action to resend or request a new invite.
-- After recovering access, the user lands on the originally intended box page.
-
-## Error and edge-case behaviour
-
-### Missing or invalid boxes
-- If a QR code is invalid or the box no longer exists, show a neutral not-found screen.
-- The not-found screen must not expose box details.
-- The not-found screen offers a clear path back to the main box list.
-
-### Archived boxes
-- Scanning or opening an archived box shows a limited archived-box screen.
-- That screen shows the box code, archived status, and an action to return to inventory.
-- Only users with edit access can restore or reopen an archived box.
-- Users without edit access are directed to contact the household or team owner.
-
-### Concurrent editing
-- The app must prevent silent overwrites.
-- Non-overlapping updates save normally, including edits to different items or box details changed separately from item details.
-- If two users change the same box field, the same item field, or the same item quantity before the second save, the second user sees a conflict screen.
-- The conflict state shows the latest saved content and asks the user to review and reapply their edits.
-- If an item was deleted by another user, any attempted save to that item is blocked and the user sees that the item was removed.
-
-### Search empty and broad states
-- If there are no matches, show an empty state that includes the search term and a clear reset action.
-- Broad searches must remain usable on mobile through compact, scrollable results.
-
-### Validation
-- A box requires a name.
-- An item requires at least a name.
-- Box names are limited to 80 characters.
-- Box notes are limited to 1,000 characters and show a live remaining-character hint.
-- Item names are limited to 80 characters.
-- Category values are limited to 40 characters.
-- Quantity must be a whole number from 1 to 9,999.
-- Missing required fields show inline messages beside the relevant inputs and keep the user on the same screen.
-- Values outside allowed limits show plain-language validation messages and prevent save until corrected.
-- Duplicate-looking names may still be saved, but the app should show a soft warning.
+### Scope boundaries for this phase
+- In scope: frontend migration to React, Tailwind-based redesign, parity for all existing user journeys, and regression coverage for the migrated experience.
+- Out of scope: offline support, native mobile apps, new auth providers, new permissions, photos, AI features, import/export, billing, analytics, or persistence replacement.
 
 ## Non-functional requirements
-- Mobile use is the primary experience.
-- The app must feel fast for common actions such as scanning, opening a box, saving edits, and searching.
-- The interface must be clear, lightweight, and polished.
-- Key flows must require minimal taps: create a box, add items, scan and edit, search, and print.
-- The system must be stable enough for daily use by a household or small team.
-- Security must prevent unauthorised browsing of box pages while keeping sign-in lightweight.
+- Mobile remains the primary experience.
+- The interface must feel faster and more coherent than the current server-rendered UI.
+- On a modern mobile browser with a normal 4G connection, a signed-in user scanning a QR code must reach a usable box page within 2 seconds.
+- On a modern mobile browser with a normal 4G connection, opening a search result must show the destination box within 2 seconds.
+- Saving a box or item change must show progress feedback within 500 milliseconds and complete with success or validation feedback within 2 seconds in normal conditions.
+- On slower networks, the interface must remain responsive, clearly show loading state, and never leave the user unsure whether an action succeeded.
+- Deep links, printed QR labels, and post-auth redirects must remain reliable through the migration.
+- The migrated app must retain automated regression coverage for the main user journeys before the old UI is considered replaceable.
+- Replacement of the old UI requires the existing Node integration suite to pass and Playwright browser coverage for sign-in, magic-link return-to-box, QR-to-box access, box create and edit, item create and edit and delete, search, invite acceptance, wrong-workspace recovery, workspace switching, member management, and label printing.
 
 ## In scope
 - Shared box inventory for a household or team.
-- Box creation, editing, archiving, and restoration.
+- Box creation, editing, archiving, restoration, and duplication.
 - Item creation, editing, deletion, and quantity tracking.
 - QR label generation and single-label printing.
 - Scan-to-open box pages in a mobile browser.
 - Global inventory search.
 - Passwordless email magic-link authentication and invitation flow.
 - Basic shared-workspace access control with owner and member roles.
+- React and Tailwind migration of the existing user experience.
 
 ## Out of scope
 - Native mobile apps.
@@ -169,15 +125,11 @@ A user can open a box and print a clean single-label view containing the QR code
 - Bulk label sheets.
 - Advanced permissions, analytics, or enterprise security features.
 - Subscriptions or billing.
+- A backend rewrite in this phase.
+
+## Alternatives Considered
+- Pure client-side single-page application: rejected because it adds routing and authentication complexity without supporting the parity-focused goal.
+- Full server-rendered React: considered, but not chosen because the hybrid model keeps migration risk lower while still improving perceived speed.
 
 ## Acceptance criteria
-The MVP is complete when a household or team member can:
-- sign in with low friction through passwordless email magic links;
-- create a box with a required name and optional location and notes;
-- receive an automatically generated box code;
-- generate and print a single QR label for that box;
-- scan the label on a phone and open the correct box page;
-- view and edit box contents immediately after scanning;
-- add, edit, and remove items with name, quantity, category, and notes;
-- search across boxes and items and confidently choose the correct result on mobile;
-- encounter clear handling for signed-out access, wrong-workspace access, invalid invites, invalid QR codes, archived boxes, validation failures, and edit conflicts.
+This phase is complete when a household or team member can complete every currently supported sign-in, box, item, QR, search, invite, workspace-switching, and member-management flow through the React interface without losing existing behaviour. The product must use Tailwind CSS as the primary styling system, preserve current URLs and recovery paths, and keep printable labels readable and reliable. Production cutover happens only when all in-scope routes reach behavioural parity, the required Node integration and Playwright regression suites pass, and print, deep-link, and post-auth redirect flows are verified end to end.
