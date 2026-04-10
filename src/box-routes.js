@@ -225,7 +225,7 @@ export async function handleBoxRoutes({
     const { session, workspace, identityMember } = await getRequestContext(store, request);
 
     if (!workspace) {
-      redirect(response, '/sign-in');
+      redirect(response, `/sign-in?returnTo=${encodeURIComponent(pathname)}`);
       return true;
     }
 
