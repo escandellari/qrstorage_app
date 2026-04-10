@@ -78,7 +78,11 @@ test('POST /boxes with invalid input re-renders the form with inline errors', as
       assert.match(html, /<link rel="stylesheet" href="\/assets\/react-shell\.css" \/>/);
       assert.match(html, /<script type="module" src="\/assets\/react-shell\.js"><\/script>/);
       assert.match(html, /<form[^>]*action="\/boxes"/);
+      assert.match(html, /data-react-shell="inventory"/);
       assert.match(html, testCase.expectedError);
+      assert.match(html, new RegExp(`name="name"[^>]*value="${testCase.form.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`, 'i'));
+      assert.match(html, new RegExp(`name="location"[^>]*value="${testCase.form.location}"`, 'i'));
+      assert.match(html, new RegExp(`name="notes"[^>]*>${testCase.form.notes.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}<\/textarea>`, 'i'));
       assert.match(html, /No boxes yet\./);
     }
   } finally {

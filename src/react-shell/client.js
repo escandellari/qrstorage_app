@@ -1,7 +1,7 @@
 import React from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID } from './constants.js';
-import { renderInventoryShellApp } from './renderInventoryShell.js';
+import { renderInventoryHomeApp } from '../inventory-home-ui/InventoryHomeApp.js';
 
 function readPageModel(id) {
   const element = document.getElementById(id);
@@ -17,5 +17,5 @@ const rootElement = document.getElementById(INVENTORY_SHELL_ROOT_ID);
 const pageModel = readPageModel(INVENTORY_SHELL_MODEL_ID);
 
 if (rootElement) {
-  hydrateRoot(rootElement, renderInventoryShellApp(pageModel));
+  hydrateRoot(rootElement, renderInventoryHomeApp(pageModel));
 }
