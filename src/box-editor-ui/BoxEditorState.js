@@ -1,5 +1,5 @@
 import React from 'react';
-import { MAX_BOX_NOTES_LENGTH } from '../box-details.js';
+import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from '../box-details.js';
 
 function FieldLabel({ text, input }) {
   return React.createElement('label', null, text, input);
@@ -40,7 +40,7 @@ export function BoxEditorState({ boxCode, boxValues, boxOriginalValues, boxError
       { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}` },
       React.createElement(FieldLabel, {
         text: 'Box name',
-        input: React.createElement('input', { type: 'text', name: 'name', defaultValue: boxValues.name ?? '' }),
+        input: React.createElement('input', { type: 'text', name: 'name', defaultValue: boxValues.name ?? '', required: true, maxLength: MAX_BOX_NAME_LENGTH }),
       }),
       boxErrors.name ? React.createElement('p', null, boxErrors.name) : null,
       React.createElement(FieldLabel, {
@@ -70,7 +70,7 @@ export function BoxEditorState({ boxCode, boxValues, boxOriginalValues, boxError
       ),
       React.createElement(FieldLabel, {
         text: 'Notes',
-        input: React.createElement('textarea', { name: 'notes', defaultValue: boxValues.notes ?? '' }),
+        input: React.createElement('textarea', { name: 'notes', defaultValue: boxValues.notes ?? '', maxLength: MAX_BOX_NOTES_LENGTH }),
       }),
       boxErrors.notes ? React.createElement('p', null, boxErrors.notes) : null,
       React.createElement('p', { 'data-notes-remaining': true }, `${MAX_BOX_NOTES_LENGTH - String(boxValues.notes ?? '').length} characters remaining`),
