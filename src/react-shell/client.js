@@ -1,7 +1,7 @@
 import React from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID } from './constants.js';
-import { renderInventoryHomeApp } from '../inventory-home-ui/renderInventoryHome.js';
+import { renderInventoryHomeApp } from '../inventory-home-ui/InventoryHomeApp.js';
 
 function readPageModel(id) {
   const element = document.getElementById(id);
