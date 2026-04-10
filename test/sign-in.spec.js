@@ -44,3 +44,41 @@ test('POST /sign-in with an unknown email shows the same confirmation and record
     await app.close();
   }
 });
+
+test('POST /sign-in preserves a valid returnTo for the later magic-link redirect', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-1',
+          name: 'Camping Kit',
+          locationSummary: 'Garage shelf',
+          notes: '',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const signInResponse = await fetch(`${app.baseUrl}/sign-in`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        email: 'owner@example.com',
+        returnTo: '/boxes/BOX-1',
+      }),
+    });
+    assert.equal(signInResponse.status, 200);
+
+    const magicLinkResponse = await fetch(`${app.baseUrl}${app.server.getSentEmails()[0].magicLinkUrl}`, { redirect: 'manual' });
+
+    assert.equal(magicLinkResponse.status, 302);
+    assert.equal(magicLinkResponse.headers.get('location'), '/boxes/BOX-1');
+  } finally {
+    await app.close();
+  }
+});

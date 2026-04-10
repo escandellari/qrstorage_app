@@ -1,5 +1,5 @@
-import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
 import { createDataStore } from './data-store.js';
 import { getBoxPath } from './box-utils.js';
 import { searchInventory } from './inventory-search.js';
@@ -9,15 +9,8 @@ import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
 import { handleWorkspaceMemberRoutes } from './workspace-members-routes.js';
 import { handleReactShellAssetRequest } from './react-shell/assets.js';
 import { renderInventoryShell } from './react-shell/renderInventoryShell.js';
-import {
-  renderBoxNotFoundPage,
-  renderCheckEmailPage,
-  renderInviteErrorPage,
-  renderLabelPage,
-  renderMagicLinkErrorPage,
-  renderSignInPage,
-  validateBoxInput,
-} from './pages.js';
+import { handleAuthRoutes } from './auth-ui/handleAuthRoutes.js';
+import { renderBoxNotFoundPage, renderLabelPage, validateBoxInput } from './pages.js';
 import { renderAccessDeniedPage, renderRequestInvitePage } from './access-denied-view.js';
 import { renderWorkspaceMembersAccessDeniedPage, renderWorkspaceMembersPage } from './workspace-members-view.js';
 import { normalizeBaseUrl, readFormBody, redirect, sendHtml, sendNotFound } from './http.js';
@@ -206,89 +199,20 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       return;
     }
 
-    if (request.method === 'GET' && url.pathname === '/sign-in') {
-      const returnTo = getValidatedReturnToPath(url.searchParams.get('returnTo') ?? '');
-      const message = returnTo ? 'Access is required. Sign in to continue.' : 'Enter your email to continue.';
-
-      sendHtml(response, 200, renderSignInPage({ returnTo, message }));
-      return;
-    }
-
-    if (request.method === 'GET' && /^\/invites\/[^/]+$/.test(url.pathname)) {
-      const inviteToken = decodeURIComponent(url.pathname.split('/')[2] ?? '');
-      const invite = inviteToken ? await store.findInvite(inviteToken) : null;
-
-      if (!invite || new Date(invite.expiresAt).getTime() <= Date.now()) {
-        sendHtml(response, 200, renderInviteErrorPage());
-        return;
-      }
-
-      const magicLink = await store.createMagicLink(
-        invite.email,
-        null,
-        new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        invite.returnTo ?? '/inventory',
-        invite.token,
-      );
-      sentEmails.push({
-        id: randomUUID(),
-        to: invite.email,
-        magicLinkUrl: `/auth/magic-link?token=${magicLink.token}`,
-      });
-      sendHtml(response, 200, renderCheckEmailPage());
-      return;
-    }
-
-    if (request.method === 'POST' && url.pathname === '/sign-in') {
-      const form = await readFormBody(request);
-      const email = String(form.get('email') ?? '').trim().toLowerCase();
-      const member = email ? await store.findMemberByEmail(email) : null;
-      const returnTo = await getPostAuthRedirectPath(store, String(form.get('returnTo') ?? ''));
-
-      if (member) {
-        const magicLink = await store.createMagicLink(email, member.id, new Date(Date.now() + 15 * 60 * 1000).toISOString(), returnTo);
-        sentEmails.push({
-          id: randomUUID(),
-          to: email,
-          magicLinkUrl: `/auth/magic-link?token=${magicLink.token}`,
-        });
-      }
-
-      sendHtml(response, 200, renderCheckEmailPage());
-      return;
-    }
-
-    if (request.method === 'GET' && url.pathname === '/auth/magic-link') {
-      const token = url.searchParams.get('token');
-      const magicLink = token ? await store.consumeMagicLink(token, new Date().toISOString()) : null;
-
-      if (!magicLink) {
-        sendHtml(response, 200, renderMagicLinkErrorPage());
-        return;
-      }
-
-      let memberId = magicLink.memberId;
-      let redirectPath = magicLink.returnTo ?? '/inventory';
-
-      if (magicLink.inviteToken) {
-        const invite = await store.findInvite(magicLink.inviteToken);
-
-        if (!invite || new Date(invite.expiresAt).getTime() <= Date.now()) {
-          sendHtml(response, 200, renderInviteErrorPage());
-          return;
-        }
-
-        const member = await store.createMember(invite.workspaceId, invite.email);
-        await store.markInviteAccepted(invite.token, new Date().toISOString());
-        memberId = member.id;
-        redirectPath = invite.returnTo ?? redirectPath;
-      }
-
-      const activeWorkspaceId = memberId ? (await store.findMemberById(memberId))?.workspaceId ?? null : null;
-      const session = await store.createSession(memberId, activeWorkspaceId);
-      redirect(response, redirectPath, {
-        'set-cookie': `session=${session.id}; Path=/; HttpOnly; SameSite=Lax`,
-      });
+    if (
+      await handleAuthRoutes({
+        store,
+        request,
+        response,
+        url,
+        sentEmails,
+        readFormBody,
+        sendHtml,
+        redirect,
+        getValidatedReturnToPath,
+        getPostAuthRedirectPath,
+      })
+    ) {
       return;
     }
 

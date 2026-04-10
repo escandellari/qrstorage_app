@@ -4,38 +4,6 @@ import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
 import { escapeHtml, renderPage } from './html.js';
 import { renderInventorySearchForm } from './inventory-search-form.js';
 
-export function renderSignInPage({ returnTo = '', message = 'Enter your email to continue.' } = {}) {
-  return renderPage({
-    title: 'Sign in',
-    body: `
-      <main>
-        <h1>Sign in</h1>
-        <p>${escapeHtml(message)}</p>
-        <form method="post" action="/sign-in">
-          <input type="hidden" name="returnTo" value="${escapeHtml(returnTo)}" />
-          <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required />
-          </label>
-          <button type="submit">Send magic link</button>
-        </form>
-      </main>
-    `,
-  });
-}
-
-export function renderCheckEmailPage() {
-  return renderPage({
-    title: 'Check your email',
-    body: `
-      <main>
-        <h1>Check your email</h1>
-        <p>If that email can access this workspace, we have sent a magic link.</p>
-      </main>
-    `,
-  });
-}
-
 export function renderInventoryPage(workspace, values = {}, errors = {}, options = {}) {
   const name = escapeHtml(values.name ?? '');
   const location = escapeHtml(values.location ?? '');
@@ -238,32 +206,6 @@ export function renderLabelPage(box, { qrSvg, qrTarget }) {
           ${name}
           ${location}
         </section>
-      </main>
-    `,
-  });
-}
-
-export function renderMagicLinkErrorPage() {
-  return renderPage({
-    title: 'Magic link error',
-    body: `
-      <main>
-        <h1>This link has expired</h1>
-        <p>Request a new magic link to continue.</p>
-        <p><a href="/sign-in">Request a new magic link</a></p>
-      </main>
-    `,
-  });
-}
-
-export function renderInviteErrorPage() {
-  return renderPage({
-    title: 'Invite link error',
-    body: `
-      <main>
-        <h1>This invite link has expired</h1>
-        <p>Request a new invite to continue.</p>
-        <p><a href="/sign-in">Request a new invite</a></p>
       </main>
     `,
   });
