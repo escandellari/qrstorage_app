@@ -6,6 +6,7 @@ import { searchInventory } from './inventory-search.js';
 import { renderInventorySearchPage } from './inventory-search-view.js';
 import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
 import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
+import { handleWorkspaceMemberRoutes } from './workspace-members-routes.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -17,9 +18,9 @@ import {
   validateBoxInput,
 } from './pages.js';
 import { renderAccessDeniedPage, renderRequestInvitePage } from './access-denied-view.js';
+import { renderWorkspaceMembersAccessDeniedPage, renderWorkspaceMembersPage } from './workspace-members-view.js';
 import { normalizeBaseUrl, readFormBody, redirect, sendHtml, sendNotFound } from './http.js';
 import { getPostAuthRedirectPath, getRequestContext, getValidatedReturnToPath, requireWorkspace } from './auth.js';
-
 export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {}) {
   const store = await createDataStore(dataDir, seedData);
   const sentEmails = [];
@@ -98,6 +99,22 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         redirect,
         sendHtml,
         renderRequestInvitePage,
+      })
+    ) {
+      return;
+    }
+
+    if (
+      await handleWorkspaceMemberRoutes({
+        store,
+        request,
+        response,
+        pathname: url.pathname,
+        getRequestContext,
+        redirect,
+        sendHtml,
+        renderWorkspaceMembersPage,
+        renderWorkspaceMembersAccessDeniedPage,
       })
     ) {
       return;
