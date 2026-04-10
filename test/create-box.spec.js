@@ -74,6 +74,9 @@ test('POST /boxes with invalid input re-renders the form with inline errors', as
       const html = await response.text();
 
       assert.equal(response.status, 200);
+      assert.match(html, /data-react-shell="inventory"/);
+      assert.match(html, /<link rel="stylesheet" href="\/assets\/react-shell\.css" \/>/);
+      assert.match(html, /<script type="module" src="\/assets\/react-shell\.js"><\/script>/);
       assert.match(html, /<form[^>]*action="\/boxes"/);
       assert.match(html, testCase.expectedError);
       assert.match(html, /No boxes yet\./);

@@ -21,3 +21,10 @@ export function renderPage({ title, head = '', body }) {
   </body>
 </html>`;
 }
+
+export function renderPageModelScript(id, data) {
+  return `<script type="application/json" id="${escapeHtml(id)}">${JSON.stringify(data)
+    .replaceAll('&', '\\u0026')
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')}</script>`;
+}
