@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAX_BOX_NOTES_LENGTH } from '../box-details.js';
 
 function DetailRow({ label, value }) {
   return React.createElement(
@@ -74,7 +75,7 @@ function BoxEditSection({ boxCode, boxValues }) {
         React.createElement('input', { type: 'text', name: 'locationShelf', defaultValue: boxValues.locationShelf ?? '' }),
       ),
       React.createElement('textarea', { name: 'notes', defaultValue: boxValues.notes ?? '' }),
-      React.createElement('p', { 'data-notes-remaining': true }, `${1000 - String(boxValues.notes ?? '').length} characters remaining`),
+      React.createElement('p', { 'data-notes-remaining': true }, `${MAX_BOX_NOTES_LENGTH - String(boxValues.notes ?? '').length} characters remaining`),
       React.createElement('input', { type: 'hidden', name: 'locationMode', value: boxValues.locationMode ?? 'simple' }),
       React.createElement('input', { type: 'hidden', name: '_method', value: 'PATCH' }),
       React.createElement('button', { type: 'submit' }, 'Save box details'),
@@ -127,9 +128,9 @@ function BoxPage({ pageModel }) {
     return React.createElement(
       'main',
       { 'data-react-screen': 'box-page' },
-      React.createElement('h1', null, "We couldn't find that box"),
-      React.createElement('p', null, 'Check the code and try again.'),
-      React.createElement('p', null, React.createElement('a', { href: '/inventory' }, 'Back to inventory')),
+      React.createElement('h1', null, pageModel.heading),
+      React.createElement('p', null, pageModel.message),
+      React.createElement('p', null, React.createElement('a', { href: '/inventory' }, pageModel.linkText)),
     );
   }
 
