@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import { findViewableBoxByCode, findWorkspaceBoxByCode, getBoxCodeFromPath, getBoxPath, getQrPath } from './box-utils.js';
+import { renderMissingBoxPage } from './box-page-ui/renderBoxPage.js';
 import {
   handleArchiveBoxRequest,
   handleCreateBoxItemRequest,
@@ -247,7 +248,7 @@ export async function handleBoxRoutes({
     const box = await findViewableBoxByCode(store, boxCode);
 
     if (!box) {
-      sendNotFound(response);
+      sendHtml(response, 404, renderMissingBoxPage());
       return true;
     }
 

@@ -1,7 +1,7 @@
 import { findActiveWorkspaceBox, findWorkspaceBoxByCode, getBoxCodeFromPath, getBoxPath, isArchivedBox } from './box-utils.js';
 import { getBoxDetailsValues, getBoxEditValues, getOriginalBoxDetailsValues, getStoredBoxDetails, hasSimilarBoxName } from './box-details.js';
 import { renderBoxPage, validateBoxInput } from './pages.js';
-import { renderArchivedBoxPage } from './archived-box-view.js';
+import { renderActiveBoxPage, renderArchivedBoxPage } from './box-page-ui/renderBoxPage.js';
 import { validateItemInput } from './item-utils.js';
 import { getBoxPageOptions, getCreateItemInput, getItemValues, getOriginalItemValues, getUpdateItemInput, isBoxAtItemLimit } from './box-items.js';
 
@@ -253,11 +253,12 @@ export async function handleGetBoxPageRequest({ store, workspaceId, pathname, re
     return;
   }
 
+  const boxPageOptions = await getBoxPageOptions(store, box);
+
   if (isArchivedBox(box)) {
-    sendHtml(response, 200, renderArchivedBoxPage(box));
+    sendHtml(response, 200, renderArchivedBoxPage(box, boxPageOptions));
     return;
   }
 
-  const boxPageOptions = await getBoxPageOptions(store, box);
-  sendHtml(response, 200, renderBoxPage(box, boxPageOptions));
+  sendHtml(response, 200, renderActiveBoxPage(box, boxPageOptions));
 }
