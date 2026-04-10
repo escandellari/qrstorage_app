@@ -1,7 +1,4 @@
-import React from 'react';
-import { renderToString } from 'react-dom/server';
-import { renderPage, renderPageModelScript } from '../html.js';
-import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID, REACT_SHELL_ASSET_PATHS } from '../react-shell/constants.js';
+import { renderReactShellPage } from '../react-shell/renderReactShellPage.js';
 import { renderInventoryHomeApp } from './InventoryHomeApp.js';
 
 export function renderInventoryHome(workspace, options = {}) {
@@ -15,15 +12,9 @@ export function renderInventoryHome(workspace, options = {}) {
     inviteMessage: options.inviteMessage ?? '',
     inviteError: options.inviteError ?? '',
   };
-  const body = renderToString(renderInventoryHomeApp(pageModel));
-
-  return renderPage({
+  return renderReactShellPage({
     title: 'Inventory',
-    head: `
-      <link rel="stylesheet" href="${REACT_SHELL_ASSET_PATHS.stylesheet}" />
-      <script type="module" src="${REACT_SHELL_ASSET_PATHS.script}"></script>
-      ${renderPageModelScript(INVENTORY_SHELL_MODEL_ID, pageModel)}
-    `,
-    body: `<div id="${INVENTORY_SHELL_ROOT_ID}">${body}</div>`,
+    pageModel,
+    app: renderInventoryHomeApp,
   });
 }
