@@ -5,11 +5,7 @@ test('signed-in member sees the React inventory shell with workspace sections', 
   const app = await createInventoryShellApp();
 
   try {
-    await page.goto(`${app.baseUrl}/sign-in`);
-    await page.getByLabel('Email').fill('owner@example.com');
-    await page.getByRole('button', { name: 'Send magic link' }).click();
-
-    await page.goto(`${app.baseUrl}${app.getLatestMagicLinkUrl()}`);
+    await app.signInToInventory(page);
 
     await expect(page).toHaveURL(`${app.baseUrl}/inventory`);
     await expect(page.locator('[data-react-shell="inventory"]')).toBeVisible();
@@ -28,10 +24,7 @@ test('built inventory shell assets are served to the browser', async ({ page, re
   const app = await createInventoryShellApp();
 
   try {
-    await page.goto(`${app.baseUrl}/sign-in`);
-    await page.getByLabel('Email').fill('owner@example.com');
-    await page.getByRole('button', { name: 'Send magic link' }).click();
-    await page.goto(`${app.baseUrl}${app.getLatestMagicLinkUrl()}`);
+    await app.signInToInventory(page);
 
     await expect(page.locator('link[href="/assets/react-shell.css"]')).toHaveCount(1);
     await expect(page.locator('script[src="/assets/react-shell.js"]')).toHaveCount(1);

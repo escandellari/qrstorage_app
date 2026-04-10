@@ -1,11 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
+import { REACT_SHELL_ASSET_PATHS } from './constants.js';
 
 const assetDirectory = join(process.cwd(), 'dist', 'assets');
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
 };
+const assetNames = new Set(Object.values(REACT_SHELL_ASSET_PATHS).map((path) => path.slice('/assets/'.length)));
 
 export async function handleReactShellAssetRequest(pathname, response) {
   if (!pathname.startsWith('/assets/')) {
@@ -14,7 +16,7 @@ export async function handleReactShellAssetRequest(pathname, response) {
 
   const assetName = pathname.slice('/assets/'.length);
 
-  if (!['react-shell.css', 'react-shell.js'].includes(assetName)) {
+  if (!assetNames.has(assetName)) {
     return false;
   }
 

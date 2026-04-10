@@ -10,5 +10,11 @@ export async function createInventoryShellApp(options = {}) {
     getLatestMagicLinkUrl() {
       return app.server.getSentEmails().at(-1)?.magicLinkUrl ?? '';
     },
+    async signInToInventory(page, email = 'owner@example.com') {
+      await page.goto(`${app.baseUrl}/sign-in`);
+      await page.getByLabel('Email').fill(email);
+      await page.getByRole('button', { name: 'Send magic link' }).click();
+      await page.goto(`${app.baseUrl}${this.getLatestMagicLinkUrl()}`);
+    },
   };
 }

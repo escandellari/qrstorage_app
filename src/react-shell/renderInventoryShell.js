@@ -1,6 +1,7 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { renderPage, renderPageModelScript } from '../html.js';
+import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID, REACT_SHELL_ASSET_PATHS } from './constants.js';
 
 function InventoryShell({ workspaceName }) {
   return React.createElement(
@@ -125,11 +126,11 @@ export function renderInventoryShell(workspace) {
   return renderPage({
     title: 'Inventory',
     head: `
-      <link rel="stylesheet" href="/assets/react-shell.css" />
-      <script type="module" src="/assets/react-shell.js"></script>
-      ${renderPageModelScript('inventory-shell-model', pageModel)}
+      <link rel="stylesheet" href="${REACT_SHELL_ASSET_PATHS.stylesheet}" />
+      <script type="module" src="${REACT_SHELL_ASSET_PATHS.script}"></script>
+      ${renderPageModelScript(INVENTORY_SHELL_MODEL_ID, pageModel)}
     `,
-    body: `<div id="inventory-shell-root">${body}</div>`,
+    body: `<div id="${INVENTORY_SHELL_ROOT_ID}">${body}</div>`,
   });
 }
 
