@@ -2,6 +2,12 @@ import React from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID } from './constants.js';
 import { renderInventoryHomeApp } from '../inventory-home-ui/InventoryHomeApp.js';
+import { renderInventorySearchApp } from '../search-ui/InventorySearchApp.js';
+
+const renderers = {
+  'inventory-home': renderInventoryHomeApp,
+  'inventory-search': renderInventorySearchApp,
+};
 
 function readPageModel(id) {
   const element = document.getElementById(id);
@@ -15,7 +21,8 @@ function readPageModel(id) {
 
 const rootElement = document.getElementById(INVENTORY_SHELL_ROOT_ID);
 const pageModel = readPageModel(INVENTORY_SHELL_MODEL_ID);
+const renderApp = renderers[pageModel.screen];
 
-if (rootElement) {
-  hydrateRoot(rootElement, renderInventoryHomeApp(pageModel));
+if (rootElement && renderApp) {
+  hydrateRoot(rootElement, renderApp(pageModel));
 }

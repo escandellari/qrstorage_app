@@ -2,23 +2,18 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { renderPage, renderPageModelScript } from '../html.js';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID, REACT_SHELL_ASSET_PATHS } from '../react-shell/constants.js';
-import { renderInventoryHomeApp } from './InventoryHomeApp.js';
+import { renderInventorySearchApp } from './InventorySearchApp.js';
 
-export function renderInventoryHome(workspace, options = {}) {
+export function renderInventorySearchPage(workspace, search) {
   const pageModel = {
-    screen: 'inventory-home',
+    screen: 'inventory-search',
     workspaceName: workspace.name,
-    boxes: options.boxes ?? [],
-    boxValues: options.boxValues ?? {},
-    boxErrors: options.boxErrors ?? {},
-    inviteValues: options.inviteValues ?? {},
-    inviteMessage: options.inviteMessage ?? '',
-    inviteError: options.inviteError ?? '',
+    search,
   };
-  const body = renderToString(renderInventoryHomeApp(pageModel));
+  const body = renderToString(renderInventorySearchApp(pageModel));
 
   return renderPage({
-    title: 'Inventory',
+    title: `Search inventory for ${search.query}`,
     head: `
       <link rel="stylesheet" href="${REACT_SHELL_ASSET_PATHS.stylesheet}" />
       <script type="module" src="${REACT_SHELL_ASSET_PATHS.script}"></script>

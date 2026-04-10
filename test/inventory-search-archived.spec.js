@@ -56,6 +56,8 @@ test('GET /inventory/search hides archived boxes by default and includes them wh
     const defaultHtml = await defaultResponse.text();
 
     assert.equal(defaultResponse.status, 200);
+    assert.match(defaultHtml, /data-react-screen="inventory-search"/i);
+    assert.match(defaultHtml, /Include archived/i);
     assert.match(defaultHtml, /Active needles/i);
     assert.match(defaultHtml, /Needle case/i);
     assert.doesNotMatch(defaultHtml, /Archived needles/i);
@@ -71,7 +73,7 @@ test('GET /inventory/search hides archived boxes by default and includes them wh
     assert.match(archivedHtml, /Archived needles/i);
     assert.match(archivedHtml, /Needle case/i);
     assert.match(archivedHtml, /Needle pack/i);
-    assert.match(archivedHtml, /name="includeArchived" value="1" checked/i);
+    assert.match(archivedHtml, /<input[^>]*name="includeArchived"[^>]*checked[^>]*value="1"|<input[^>]*name="includeArchived"[^>]*value="1"[^>]*checked/i);
   } finally {
     await app.close();
   }
