@@ -1,16 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { createTestServer, signInAs } from './support/test-server.js';
+import { createWorkspaceMember, createWorkspaceMembersSeedData } from './support/workspace-members.js';
 
 test('GET /workspace/members as an owner renders current members and their roles', async () => {
   const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'member@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-    },
+    seedData: createWorkspaceMembersSeedData({
+      members: [createWorkspaceMember()],
+    }),
   });
 
   try {
@@ -32,16 +29,11 @@ test('GET /workspace/members as an owner renders current members and their roles
   }
 });
 
-
 test('GET /workspace/members as a member shows a friendly owner-only permission message', async () => {
   const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'member@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-    },
+    seedData: createWorkspaceMembersSeedData({
+      members: [createWorkspaceMember()],
+    }),
   });
 
   try {

@@ -1,16 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { createWorkspaceMember, createWorkspaceMembersSeedData } from './support/workspace-members.js';
+
+function createWorkspaceBox() {
+  return {
+    id: 'box-1',
+    workspaceId: 'workspace-1',
+    boxCode: 'BOX-0042',
+    name: 'Camping Kit',
+    locationSummary: 'Garage shelf',
+    notes: 'Check stove fuel before summer.',
+    status: 'active',
+  };
+}
 
 test('POST /workspace/members/:memberId/remove removes a member and denies later inventory access', async () => {
   const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'member@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-    },
+    seedData: createWorkspaceMembersSeedData({
+      members: [createWorkspaceMember()],
+    }),
   });
 
   try {
@@ -41,27 +50,12 @@ test('POST /workspace/members/:memberId/remove removes a member and denies later
   }
 });
 
-
 test('GET /boxes/:boxCode after removal follows the existing unauthorised recovery path', async () => {
   const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'member@example.com', workspaceId: 'workspace-1', role: 'member' },
-      ],
-      boxes: [
-        {
-          id: 'box-1',
-          workspaceId: 'workspace-1',
-          boxCode: 'BOX-0042',
-          name: 'Camping Kit',
-          locationSummary: 'Garage shelf',
-          notes: 'Check stove fuel before summer.',
-          status: 'active',
-        },
-      ],
-    },
+    seedData: createWorkspaceMembersSeedData({
+      members: [createWorkspaceMember()],
+      boxes: [createWorkspaceBox()],
+    }),
   });
 
   try {
@@ -86,7 +80,6 @@ test('GET /boxes/:boxCode after removal follows the existing unauthorised recove
   }
 });
 
-
 test('POST /workspace/members/:memberId/remove blocks removal of the last remaining owner', async () => {
   const app = await createTestServer({ seedData: defaultSeedData });
 
@@ -108,18 +101,15 @@ test('POST /workspace/members/:memberId/remove blocks removal of the last remain
   }
 });
 
-
 test('POST /workspace/members/:memberId/remove leaves other workspace memberships intact', async () => {
   const app = await createTestServer({
-    seedData: {
-      ...defaultSeedData,
-      workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
+    seedData: createWorkspaceMembersSeedData({
+      workspaces: [{ id: 'workspace-2', name: 'Studio' }],
       members: [
-        ...defaultSeedData.members,
-        { id: 'member-2', email: 'shared@example.com', workspaceId: 'workspace-1', role: 'member' },
-        { id: 'member-3', email: 'shared@example.com', workspaceId: 'workspace-2', role: 'owner' },
+        createWorkspaceMember('shared@example.com'),
+        createWorkspaceMember('shared@example.com', { id: 'member-3', workspaceId: 'workspace-2', role: 'owner' }),
       ],
-    },
+    }),
   });
 
   try {
