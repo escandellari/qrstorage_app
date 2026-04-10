@@ -70,20 +70,19 @@ export async function handleWorkspaceMemberRoutes({
   }
 
   const memberId = decodeURIComponent(removeMatch[1]);
-  const members = await store.listMembersByWorkspaceId(context.workspace.id);
-  const targetMember = members.find((workspaceMember) => workspaceMember.id === memberId);
+  const result = await store.removeWorkspaceMember(context.workspace.id, memberId);
 
-  if (!targetMember) {
+  if (result.status === 'not_found') {
     redirect(response, '/workspace/members');
     return true;
   }
 
-  if (targetMember.role === 'owner' && members.filter((workspaceMember) => workspaceMember.role === 'owner').length === 1) {
+  if (result.status === 'last_owner') {
+    const members = await store.listMembersByWorkspaceId(context.workspace.id);
     sendHtml(response, 200, renderWorkspaceMembersPage(context.workspace, members, { error: 'At least one owner must remain in the workspace.' }));
     return true;
   }
 
-  await store.removeMember(memberId);
   redirect(response, '/workspace/members');
   return true;
 }

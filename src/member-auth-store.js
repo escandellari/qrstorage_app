@@ -150,18 +150,25 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       return session;
     },
 
-    async removeMember(memberId) {
+    async removeWorkspaceMember(workspaceId, memberId) {
       return withMutationLock(async () => {
         const data = await readData();
-        const memberIndex = data.members.findIndex((member) => member.id === memberId);
+        const memberIndex = data.members.findIndex((member) => member.id === memberId && member.workspaceId === workspaceId);
 
         if (memberIndex < 0) {
-          return null;
+          return { status: 'not_found' };
+        }
+
+        const targetMember = data.members[memberIndex];
+        const ownerCount = data.members.filter((member) => member.workspaceId === workspaceId && member.role === 'owner').length;
+
+        if (targetMember.role === 'owner' && ownerCount === 1) {
+          return { status: 'last_owner' };
         }
 
         const [member] = data.members.splice(memberIndex, 1);
         await writeData(data);
-        return member;
+        return { status: 'removed', member };
       });
     },
 
