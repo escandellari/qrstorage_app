@@ -1,11 +1,5 @@
 import QRCode from 'qrcode';
-import {
-  findViewableBoxByCode,
-  findWorkspaceBoxByCode,
-  getBoxCodeFromPath,
-  getBoxPath,
-  getQrPath,
-} from './box-utils.js';
+import { findViewableBoxByCode, findWorkspaceBoxByCode, getBoxCodeFromPath, getBoxPath, getQrPath } from './box-utils.js';
 import {
   handleArchiveBoxRequest,
   handleCreateBoxItemRequest,
@@ -115,10 +109,12 @@ export async function handleBoxRoutes({
   pathname,
   method,
   requireWorkspace,
+  getRequestContext,
   redirect,
   readFormBody,
   sendHtml,
   sendNotFound,
+  renderAccessDeniedPage,
 }) {
   if (method === 'POST' && /^\/boxes\/[^/]+\/items$/.test(pathname)) {
     return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
@@ -226,16 +222,50 @@ export async function handleBoxRoutes({
   }
 
   if (method === 'GET' && /^\/boxes\/[^/]+$/.test(pathname)) {
-    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
-      await handleGetBoxPageRequest({
-        store,
-        workspaceId: workspace.id,
-        pathname,
+    const { session, workspace, identityMember } = await getRequestContext(store, request);
+
+    if (!workspace) {
+      redirect(response, '/sign-in');
+      return true;
+    }
+
+    const boxCode = getBoxCodeFromPath(pathname);
+    const box = await findViewableBoxByCode(store, boxCode);
+
+    if (!box) {
+      sendNotFound(response);
+      return true;
+    }
+
+    if (box.workspaceId !== workspace.id) {
+      const targetMembership = identityMember
+        ? await store.findMemberByEmailAndWorkspaceId(identityMember.email, box.workspaceId)
+        : null;
+      if (session) {
+        await store.updateSessionPendingReturnTo(session.id, pathname);
+      }
+
+      sendHtml(
         response,
-        sendHtml,
-        sendNotFound,
-      });
+        403,
+        renderAccessDeniedPage({
+          currentWorkspaceName: workspace.name,
+          canSwitch: Boolean(targetMembership),
+          targetWorkspaceId: box.workspaceId,
+        }),
+      );
+      return true;
+    }
+
+    await handleGetBoxPageRequest({
+      store,
+      workspaceId: workspace.id,
+      pathname,
+      response,
+      sendHtml,
+      sendNotFound,
     });
+    return true;
   }
 
   return false;

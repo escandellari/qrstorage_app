@@ -7,6 +7,11 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       return data.members.find((member) => member.email.toLowerCase() === email.toLowerCase()) ?? null;
     },
 
+    async findMemberByEmailAndWorkspaceId(email, workspaceId) {
+      const data = await readData();
+      return data.members.find((member) => member.workspaceId === workspaceId && member.email.toLowerCase() === email.toLowerCase()) ?? null;
+    },
+
     async findWorkspaceById(workspaceId) {
       const data = await readData();
       return data.workspaces.find((workspace) => workspace.id === workspaceId) ?? null;
@@ -113,15 +118,46 @@ export function createMemberAuthStore({ readData, writeData, withMutationLock })
       });
     },
 
-    async createSession(memberId) {
+    async createSession(memberId, activeWorkspaceId = null) {
       const data = await readData();
       const session = {
         id: randomUUID(),
         memberId,
+        activeWorkspaceId,
       };
       data.sessions.push(session);
       await writeData(data);
       return session;
+    },
+
+    async updateSessionWorkspace(sessionId, activeWorkspaceId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const session = data.sessions.find((record) => record.id === sessionId);
+
+        if (!session) {
+          return null;
+        }
+
+        session.activeWorkspaceId = activeWorkspaceId;
+        await writeData(data);
+        return { ...session };
+      });
+    },
+
+    async updateSessionPendingReturnTo(sessionId, pendingReturnToPath) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const session = data.sessions.find((record) => record.id === sessionId);
+
+        if (!session) {
+          return null;
+        }
+
+        session.pendingReturnToPath = pendingReturnToPath;
+        await writeData(data);
+        return { ...session };
+      });
     },
 
     async findSession(sessionId) {

@@ -18,14 +18,21 @@ function parseCookies(request) {
 export async function getRequestContext(store, request) {
   const cookies = parseCookies(request);
   const session = cookies.session ? await store.findSession(cookies.session) : null;
-  const member = session ? await store.findMemberById(session.memberId) : null;
-  const workspace = member ? await store.findWorkspaceById(member.workspaceId) : null;
+  const identityMember = session ? await store.findMemberById(session.memberId) : null;
+  const activeWorkspaceId = session?.activeWorkspaceId ?? identityMember?.workspaceId ?? null;
+  const workspace = activeWorkspaceId ? await store.findWorkspaceById(activeWorkspaceId) : null;
+  const member =
+    identityMember && activeWorkspaceId
+      ? (identityMember.workspaceId === activeWorkspaceId
+          ? identityMember
+          : await store.findMemberByEmailAndWorkspaceId(identityMember.email, activeWorkspaceId))
+      : null;
 
-  return { session, member, workspace };
+  return { session, member, workspace, identityMember };
 }
 
 export function getValidatedReturnToPath(pathname) {
-  if (!/^\/q\/[^/]+$/.test(pathname)) {
+  if (!/^\/(q|boxes)\/[^/]+$/.test(pathname)) {
     return '';
   }
 
