@@ -8,7 +8,7 @@ import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './b
 import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
 import { handleWorkspaceMemberRoutes } from './workspace-members-routes.js';
 import { handleReactShellAssetRequest } from './react-shell/assets.js';
-import { renderInventoryShell } from './react-shell/renderInventoryShell.js';
+import { renderInventoryHome } from './inventory-home-ui/renderInventoryHome.js';
 import { handleAuthRoutes } from './auth-ui/handleAuthRoutes.js';
 import { renderBoxNotFoundPage, renderLabelPage, validateBoxInput } from './pages.js';
 import { renderAccessDeniedPage, renderRequestInvitePage } from './access-denied-view.js';
@@ -19,6 +19,11 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
   const store = await createDataStore(dataDir, seedData);
   const sentEmails = [];
   let resolvedBaseUrl = baseUrl ? normalizeBaseUrl(baseUrl) : null;
+
+  async function sendInventoryHome(response, workspace, options = {}) {
+    const boxes = options.boxes ?? (await store.listBoxesForWorkspace(workspace.id));
+    sendHtml(response, 200, renderInventoryHome(workspace, { ...options, boxes }));
+  }
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
@@ -34,7 +39,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      sendHtml(response, 200, renderInventoryShell(workspace));
+      await sendInventoryHome(response, workspace);
       return;
     }
 
@@ -68,14 +73,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       const returnTo = await getPostAuthRedirectPath(store, String(form.get('returnTo') ?? ''));
 
       if (member.role !== 'owner') {
-        sendHtml(
-          response,
-          200,
-          renderInventoryShell(workspace, {
-            inviteValues: { email },
-            inviteError: 'Only the workspace owner can send invites. Contact the owner for access.',
-          }),
-        );
+        await sendInventoryHome(response, workspace, {
+          inviteValues: { email },
+          inviteError: 'Only the workspace owner can send invites. Contact the owner for access.',
+        });
         return;
       }
 
@@ -85,7 +86,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         to: email,
         inviteUrl: `/invites/${invite.token}`,
       });
-      sendHtml(response, 200, renderInventoryShell(workspace, { inviteMessage: 'Invite sent.', inviteValues: { email: '' } }));
+      await sendInventoryHome(response, workspace, { inviteMessage: 'Invite sent.', inviteValues: { email: '' } });
       return;
     }
 
@@ -135,7 +136,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
       const errors = validateBoxInput({ name, notes });
 
       if (Object.keys(errors).length > 0) {
-        sendHtml(response, 200, renderInventoryShell(workspace, { boxValues: { name, location, notes }, boxErrors: errors }));
+        await sendInventoryHome(response, workspace, { boxValues: { name, location, notes }, boxErrors: errors });
         return;
       }
 

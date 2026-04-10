@@ -55,6 +55,7 @@ test('POST /workspace/invites as a member shows a friendly owner-only permission
     assert.match(html, /<script type="module" src="\/assets\/react-shell\.js"><\/script>/);
     assert.match(html, /only the workspace owner can send invites/i);
     assert.match(html, /contact the owner for access/i);
+    assert.match(html, /name="email"[^>]*value="blocked@example.com"/i);
     assert.equal(app.server.getSentEmails().length, 1);
   } finally {
     await app.close();
