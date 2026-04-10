@@ -71,6 +71,7 @@ test('PATCH /boxes/:boxCode/items/:itemId with invalid data re-renders inline er
     const html = await updateResponse.text();
 
     assert.equal(updateResponse.status, 200);
+    assert.match(html, /data-react-screen="box-page"/i);
     assert.match(html, /<form[^>]*action="\/boxes\/BOX-0042\/items\/item-1"/i);
     assert.match(html, /Enter an item name\./i);
     assert.match(html, /Enter a whole number between 1 and 9,999\./i);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { renderBoxEditorState } from '../box-editor-ui/renderBoxEditorState.js';
+import { renderBoxItemsState } from '../box-items-ui/renderBoxItemsState.js';
 
 function DetailRow({ label, value }) {
   return React.createElement(
@@ -36,44 +37,6 @@ function BoxActions({ boxCode, labelPath, showArchiveAction }) {
   );
 }
 
-function ItemDetails({ boxCode, item }) {
-  const details = [
-    item.quantity ? `Quantity: ${item.quantity}` : '',
-    item.category ? `Category: ${item.category}` : '',
-    item.notes ? `Notes: ${item.notes}` : '',
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const quantityValue = item.quantity ? String(item.quantity) : '';
-
-  return React.createElement(
-    'li',
-    null,
-    React.createElement('strong', null, item.name),
-    details ? React.createElement('div', null, details) : null,
-    React.createElement(
-      'form',
-      { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}/items/${encodeURIComponent(item.id)}` },
-      React.createElement('input', { type: 'text', name: 'name', defaultValue: item.name ?? '' }),
-      React.createElement('input', { type: 'text', name: 'quantity', inputMode: 'numeric', defaultValue: quantityValue }),
-      React.createElement('input', { type: 'text', name: 'category', defaultValue: item.category ?? '' }),
-      React.createElement('textarea', { name: 'notes', defaultValue: item.notes ?? '' }),
-      React.createElement('input', { type: 'hidden', name: '_method', value: 'PATCH' }),
-      React.createElement('input', { type: 'hidden', name: 'originalName', value: item.name ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalQuantity', value: quantityValue }),
-      React.createElement('input', { type: 'hidden', name: 'originalCategory', value: item.category ?? '' }),
-      React.createElement('input', { type: 'hidden', name: 'originalNotes', value: item.notes ?? '' }),
-      React.createElement('button', { type: 'submit', formMethod: 'post' }, 'Save changes'),
-    ),
-    React.createElement(
-      'form',
-      { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}/items/${encodeURIComponent(item.id)}/delete` },
-      React.createElement('button', { type: 'submit' }, 'Delete item'),
-    ),
-  );
-}
-
-
 function ItemAreaShell({
   boxCode,
   boxValues,
@@ -84,44 +47,40 @@ function ItemAreaShell({
   items = [],
   emptyPrompt = '',
   itemLimitMessage = '',
+  itemValues = {},
+  itemErrors = {},
+  editItemId = '',
+  editItemValues = {},
+  editItemErrors = {},
+  editOriginalItemValues = {},
+  conflictItemId = '',
+  conflictItem = null,
+  removedItemMessage = '',
   archived = false,
 }) {
+  const itemStateProps = {
+    boxCode,
+    items,
+    emptyPrompt,
+    itemLimitMessage,
+    itemValues,
+    itemErrors,
+    editItemId,
+    editItemValues,
+    editItemErrors,
+    editOriginalItemValues,
+    conflictItemId,
+    conflictItem,
+    removedItemMessage,
+    archived,
+  };
+
   return React.createElement(
     React.Fragment,
     null,
-    React.createElement(
-      'section',
-      null,
-      React.createElement('h2', null, 'Contents'),
-      archived
-        ? React.createElement('p', null, 'This box is archived. Restore it to edit its contents.')
-        : items.length === 0
-          ? React.createElement('p', null, emptyPrompt)
-          : React.createElement('ul', null, items.map((item) => React.createElement(ItemDetails, { key: item.id, boxCode, item }))),
-    ),
-    archived
-      ? null
-      : React.createElement(
-          React.Fragment,
-          null,
-          renderBoxEditorState({ boxCode, boxValues, boxOriginalValues, boxErrors, boxWarning, conflictBox }),
-          React.createElement(
-            'section',
-            null,
-            React.createElement('h2', null, 'Add item'),
-            itemLimitMessage
-              ? React.createElement('p', null, itemLimitMessage)
-              : React.createElement(
-                  'form',
-                  { method: 'post', action: `/boxes/${encodeURIComponent(boxCode)}/items` },
-                  React.createElement('input', { type: 'text', name: 'name' }),
-                  React.createElement('input', { type: 'text', name: 'quantity' }),
-                  React.createElement('input', { type: 'text', name: 'category' }),
-                  React.createElement('textarea', { name: 'notes' }),
-                  React.createElement('button', { type: 'submit' }, 'Add item'),
-                ),
-          ),
-        ),
+    renderBoxItemsState({ ...itemStateProps, section: 'contents' }),
+    archived ? null : renderBoxEditorState({ boxCode, boxValues, boxOriginalValues, boxErrors, boxWarning, conflictBox }),
+    renderBoxItemsState({ ...itemStateProps, section: 'add-form' }),
   );
 }
 
@@ -162,6 +121,15 @@ function BoxPage({ pageModel }) {
       items: pageModel.items,
       emptyPrompt: pageModel.emptyPrompt,
       itemLimitMessage: pageModel.itemLimitMessage,
+      itemValues: pageModel.itemValues,
+      itemErrors: pageModel.itemErrors,
+      editItemId: pageModel.editItemId,
+      editItemValues: pageModel.editItemValues,
+      editItemErrors: pageModel.editItemErrors,
+      editOriginalItemValues: pageModel.editOriginalItemValues,
+      conflictItemId: pageModel.conflictItemId,
+      conflictItem: pageModel.conflictItem,
+      removedItemMessage: pageModel.removedItemMessage,
       boxOriginalValues: pageModel.boxOriginalValues,
       boxErrors: pageModel.boxErrors,
       boxWarning: pageModel.boxWarning,
