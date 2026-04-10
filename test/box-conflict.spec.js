@@ -53,9 +53,12 @@ test('PATCH /boxes/:boxCode with a stale changed box field shows a conflict scre
     const html = await staleSave.text();
 
     assert.equal(staleSave.status, 200);
+    assert.match(html, /data-react-screen="box-page"/i);
     assert.match(html, /This box was updated by someone else\./i);
     assert.match(html, /Latest saved box/i);
     assert.match(html, /Winter Camping Kit/);
+    assert.match(html, /<h2>Edit box details<\/h2>/i);
+    assert.match(html, /<label>Box name<input/i);
     assert.match(html, /value="Archive Camping Kit"/i);
     assert.doesNotMatch(html, /<h1>Archive Camping Kit<\/h1>/i);
   } finally {
@@ -125,9 +128,12 @@ test('GET /boxes/:boxCode carries original box values so a stale page shows the 
     const html = await staleSave.text();
 
     assert.equal(staleSave.status, 200);
+    assert.match(html, /data-react-screen="box-page"/i);
     assert.match(html, /This box was updated by someone else\./i);
     assert.match(html, /Latest saved box/i);
     assert.match(html, /Winter Camping Kit/);
+    assert.match(html, /<h2>Edit box details<\/h2>/i);
+    assert.match(html, /<label>Box name<input/i);
     assert.match(html, /value="Archive Camping Kit"/i);
     assert.doesNotMatch(html, /<h1>Archive Camping Kit<\/h1>/i);
   } finally {

@@ -31,6 +31,9 @@ function getBasePageModel(box, options = {}) {
     itemLimitMessage: options.itemLimitMessage ?? '',
     boxValues: options.boxValues ?? getBoxEditValues(box),
     boxOriginalValues: options.boxOriginalValues ?? getBoxEditValues(box),
+    boxErrors: options.boxErrors ?? {},
+    boxWarning: options.boxWarning ?? '',
+    conflictBox: options.conflictBox ?? null,
   };
 }
 

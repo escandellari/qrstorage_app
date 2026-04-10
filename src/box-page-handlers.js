@@ -193,14 +193,14 @@ export async function handleUpdateBoxRequest({
   const boxPageOptions = await getBoxPageOptions(store, box);
 
   if (Object.keys(errors).length > 0) {
-    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, boxValues, boxErrors: errors, boxOriginalValues: originalBoxValues }));
+    sendHtml(response, 200, renderActiveBoxPage(box, { ...boxPageOptions, boxValues, boxErrors: errors, boxOriginalValues: originalBoxValues }));
     return;
   }
 
   const updateResult = await store.updateBox(box.id, getStoredBoxDetails(boxValues), getStoredBoxDetails(originalBoxValues));
 
   if (updateResult.status === 'conflict') {
-    sendHtml(response, 200, renderBoxPage(box, { ...boxPageOptions, boxValues, boxOriginalValues: originalBoxValues, conflictBox: updateResult.box }));
+    sendHtml(response, 200, renderActiveBoxPage(box, { ...boxPageOptions, boxValues, boxOriginalValues: originalBoxValues, conflictBox: updateResult.box }));
     return;
   }
 
@@ -212,7 +212,7 @@ export async function handleUpdateBoxRequest({
       boxValues: getBoxEditValues(updatedBox),
       boxWarning: 'Another box already has a similar name.',
     });
-    sendHtml(response, 200, renderBoxPage(updatedBox, updatedBoxPageOptions));
+    sendHtml(response, 200, renderActiveBoxPage(updatedBox, updatedBoxPageOptions));
     return;
   }
 

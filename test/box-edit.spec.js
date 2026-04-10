@@ -83,7 +83,7 @@ test('PATCH /boxes/:boxCode with valid simple-location edits updates the box and
   }
 });
 
-test('PATCH /boxes/:boxCode with invalid box details re-renders inline errors, keeps entered values, and shows the notes remaining hint', async () => {
+test('PATCH /boxes/:boxCode with invalid box details re-renders React validation feedback, keeps entered values, and shows the notes remaining hint', async () => {
   const app = await createTestServer({
     seedData: {
       ...defaultSeedData,
@@ -123,8 +123,11 @@ test('PATCH /boxes/:boxCode with invalid box details re-renders inline errors, k
       const html = await response.text();
 
       assert.equal(response.status, 200);
-      assert.match(html, /<form[^>]*action="\/boxes\/BOX-0042"/i);
+      assert.match(html, /data-react-screen="box-page"/i);
       assert.match(html, testCase.expectedError);
+      assert.match(html, /<label>Box name<input/i);
+      assert.match(html, /<label>Location<input/i);
+      assert.match(html, /<label>Notes<textarea/i);
       assert.match(html, new RegExp(`value="${testCase.form.location}"`));
       assert.match(html, new RegExp(testCase.expectedRemaining));
       assert.doesNotMatch(html, /<strong>Location<\/strong>: Hall cupboard/i);
@@ -168,7 +171,10 @@ test('PATCH /boxes/:boxCode with a duplicate-looking name shows a soft warning a
     const html = await response.text();
 
     assert.equal(response.status, 200);
+    assert.match(html, /data-react-screen="box-page"/i);
     assert.match(html, /Another box already has a similar name\./i);
+    assert.match(html, /<h2>Edit box details<\/h2>/i);
+    assert.match(html, /<label>Box name<input/i);
     assert.match(html, /<h1>archive-box<\/h1>/i);
     assert.match(html, /<strong>Location<\/strong>: Hall cupboard/i);
     assert.match(html, /<strong>Box code<\/strong>: BOX-0042/i);
