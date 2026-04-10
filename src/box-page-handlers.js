@@ -207,6 +207,18 @@ export async function handleUpdateBoxRequest({
   redirect(response, getBoxPath(updatedBox.boxCode));
 }
 
+export async function handleDuplicateBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
+  const box = await findWorkspaceBox(store, workspaceId, pathname);
+
+  if (!box) {
+    sendNotFound(response);
+    return;
+  }
+
+  const duplicatedBox = await store.duplicateBox(box.id);
+  redirect(response, getBoxPath(duplicatedBox.boxCode));
+}
+
 export async function handleArchiveBoxRequest({ store, workspaceId, pathname, response, redirect, sendNotFound }) {
   const box = await findWorkspaceBox(store, workspaceId, pathname);
 

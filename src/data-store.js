@@ -16,6 +16,11 @@ function createEmptyData() {
     sessions: [],
   };
 }
+
+function getNextBoxCode(boxes) {
+  return `BOX-${String(boxes.length + 1).padStart(4, '0')}`;
+}
+
 export async function createDataStore(dataDir, seedData = {}) {
   await mkdir(dataDir, { recursive: true });
   const filePath = join(dataDir, 'data.json');
@@ -60,11 +65,10 @@ export async function createDataStore(dataDir, seedData = {}) {
     async createBox(workspaceId, { name, locationSummary, notes }) {
       return withMutationLock(async () => {
         const data = await readData();
-        const nextCode = `BOX-${String(data.boxes.length + 1).padStart(4, '0')}`;
         const box = {
           id: randomUUID(),
           workspaceId,
-          boxCode: nextCode,
+          boxCode: getNextBoxCode(data.boxes),
           name,
           locationSummary,
           notes,
@@ -185,6 +189,42 @@ export async function createDataStore(dataDir, seedData = {}) {
         data.items.push(item);
         await writeData(data);
         return item;
+      });
+    },
+
+    async duplicateBox(boxId) {
+      return withMutationLock(async () => {
+        const data = await readData();
+        const sourceBox = data.boxes.find((box) => box.id === boxId);
+
+        if (!sourceBox) {
+          return null;
+        }
+
+        const duplicatedBox = {
+          id: randomUUID(),
+          workspaceId: sourceBox.workspaceId,
+          boxCode: getNextBoxCode(data.boxes),
+          name: sourceBox.name,
+          locationSummary: sourceBox.locationSummary,
+          notes: sourceBox.notes,
+          status: 'active',
+        };
+        const duplicatedItems = data.items
+          .filter((item) => item.boxId === sourceBox.id)
+          .map((item) => ({
+            id: randomUUID(),
+            boxId: duplicatedBox.id,
+            name: item.name,
+            quantity: item.quantity,
+            category: item.category,
+            notes: item.notes,
+          }));
+
+        data.boxes.push(duplicatedBox);
+        data.items.push(...duplicatedItems);
+        await writeData(data);
+        return duplicatedBox;
       });
     },
 

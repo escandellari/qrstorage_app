@@ -122,6 +122,7 @@ export function renderBoxPage(
   const boxActions = renderBoxActions({
     escapeHtml,
     labelPath,
+    duplicatePath: `/boxes/${encodeURIComponent(box.boxCode)}/duplicate`,
   });
   const itemList = renderBoxItemsSection({
     boxCode: box.boxCode,
