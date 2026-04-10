@@ -1,28 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
-
-function createWrongWorkspaceSeedData({ includeTargetMembership = true, items = [] } = {}) {
-  return {
-    ...defaultSeedData,
-    workspaces: [...defaultSeedData.workspaces, { id: 'workspace-2', name: 'Studio' }],
-    members: includeTargetMembership
-      ? [...defaultSeedData.members, { id: 'member-2', email: 'owner@example.com', workspaceId: 'workspace-2', role: 'owner' }]
-      : defaultSeedData.members,
-    boxes: [
-      {
-        id: 'box-1',
-        workspaceId: 'workspace-2',
-        boxCode: 'BOX-0042',
-        name: 'Camping Kit',
-        locationSummary: 'Garage shelf',
-        notes: 'Check stove fuel before summer.',
-        status: 'active',
-      },
-    ],
-    items,
-  };
-}
+import { createWrongWorkspaceSeedData, WRONG_WORKSPACE_BOX_CODE, WRONG_WORKSPACE_ID } from './support/wrong-workspace.js';
+import { createTestServer, signInAs } from './support/test-server.js';
 
 async function createWrongWorkspaceApp(options) {
   return createTestServer({ seedData: createWrongWorkspaceSeedData(options) });
@@ -33,7 +12,7 @@ test('GET /boxes/:boxCode in the wrong workspace renders an access-denied screen
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+    const response = await fetch(`${app.baseUrl}/boxes/${WRONG_WORKSPACE_BOX_CODE}`, {
       headers: { cookie: sessionCookie },
     });
     const html = await response.text();
@@ -64,7 +43,7 @@ test('GET /boxes/:boxCode in the wrong workspace shows the current workspace nam
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+    const response = await fetch(`${app.baseUrl}/boxes/${WRONG_WORKSPACE_BOX_CODE}`, {
       headers: { cookie: sessionCookie },
     });
     const html = await response.text();
@@ -77,7 +56,7 @@ test('GET /boxes/:boxCode in the wrong workspace shows the current workspace nam
     assert.doesNotMatch(html, /Check stove fuel before summer\./);
     assert.doesNotMatch(html, /Fuel canister/);
     assert.doesNotMatch(html, /Full tank/);
-    assert.doesNotMatch(html, /BOX-0042/);
+    assert.doesNotMatch(html, new RegExp(WRONG_WORKSPACE_BOX_CODE));
   } finally {
     await app.close();
   }
@@ -88,7 +67,7 @@ test('POST /workspace/switch switches workspace and returns the user to the orig
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
-    const deniedResponse = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+    const deniedResponse = await fetch(`${app.baseUrl}/boxes/${WRONG_WORKSPACE_BOX_CODE}`, {
       headers: { cookie: sessionCookie },
     });
 
@@ -101,13 +80,13 @@ test('POST /workspace/switch switches workspace and returns the user to the orig
         cookie: sessionCookie,
         'content-type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ workspaceId: 'workspace-2' }),
+      body: new URLSearchParams({ workspaceId: WRONG_WORKSPACE_ID }),
     });
 
     assert.equal(switchResponse.status, 302);
-    assert.equal(switchResponse.headers.get('location'), '/boxes/BOX-0042');
+    assert.equal(switchResponse.headers.get('location'), `/boxes/${WRONG_WORKSPACE_BOX_CODE}`);
 
-    const boxResponse = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+    const boxResponse = await fetch(`${app.baseUrl}/boxes/${WRONG_WORKSPACE_BOX_CODE}`, {
       headers: { cookie: sessionCookie },
     });
     const boxHtml = await boxResponse.text();
@@ -126,7 +105,7 @@ test('GET /boxes/:boxCode without target-workspace membership shows a request-in
 
   try {
     const sessionCookie = await signInAs(app, 'owner@example.com');
-    const response = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+    const response = await fetch(`${app.baseUrl}/boxes/${WRONG_WORKSPACE_BOX_CODE}`, {
       headers: { cookie: sessionCookie },
     });
     const html = await response.text();
