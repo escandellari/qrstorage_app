@@ -7,6 +7,8 @@ import { renderInventorySearchPage } from './inventory-search-view.js';
 import { handleBoxRoutes, handleLabelPageRequest, handleQrBoxRequest } from './box-routes.js';
 import { handleWorkspaceAccessRoutes } from './workspace-access-routes.js';
 import { handleWorkspaceMemberRoutes } from './workspace-members-routes.js';
+import { handleReactShellAssetRequest } from './react-shell/assets.js';
+import { renderInventoryShell } from './react-shell/renderInventoryShell.js';
 import {
   renderBoxNotFoundPage,
   renderCheckEmailPage,
@@ -29,6 +31,10 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
   const server = createServer(async (request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
 
+    if (request.method === 'GET' && (await handleReactShellAssetRequest(url.pathname, response))) {
+      return;
+    }
+
     if (request.method === 'GET' && url.pathname === '/inventory') {
       const workspace = await requireWorkspace(store, request, response, redirect);
 
@@ -36,7 +42,7 @@ export async function startServer({ dataDir, port = 0, seedData, baseUrl } = {})
         return;
       }
 
-      sendHtml(response, 200, renderInventoryPage(workspace));
+      sendHtml(response, 200, renderInventoryShell(workspace));
       return;
     }
 
