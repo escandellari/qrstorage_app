@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { signInAs } from './support/test-server.js';
-import { createBoxItemsTestApp } from './support/box-items.js';
+import { createTestServer, defaultSeedData, signInAs } from './support/test-server.js';
+import { createBoxItemsTestApp, defaultBox } from './support/box-items.js';
 
 async function duplicateBox(app, sessionCookie) {
   const response = await fetch(`${app.baseUrl}/boxes/BOX-0042/duplicate`, {
@@ -157,6 +157,61 @@ test('duplicating a box leaves the source box unchanged and stores copied items 
     assert.notEqual(sourceItems[0].id, duplicatedItems[0].id);
     assert.equal(sourceItems[0].boxId, sourceBox.id);
     assert.equal(duplicatedItems[0].boxId, duplicatedBox.id);
+  } finally {
+    await app.close();
+  }
+});
+
+test('duplicating a structured-location box preserves structured location fields on the duplicate', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          ...defaultBox,
+          locationMode: 'structured',
+          simpleLocation: '',
+          structuredLocation: {
+            site: 'Home Base',
+            room: 'Garage',
+            area: 'North wall',
+            shelf: 'Top shelf',
+          },
+          locationSummary: 'Home Base · Garage · North wall · Top shelf',
+        },
+      ],
+      items: [],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const duplicateResponse = await duplicateBox(app, sessionCookie);
+    const duplicatedBoxCode = duplicateResponse.boxCode;
+
+    const response = await fetch(`${app.baseUrl}/boxes/${duplicatedBoxCode}`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+    const data = await app.readData();
+    const duplicatedBox = data.boxes.find((box) => box.boxCode === duplicatedBoxCode);
+
+    assert.equal(response.status, 200);
+    assert.match(html, /<strong>Location<\/strong>: Home Base · Garage · North wall · Top shelf/i);
+    assert.match(html, /name="locationMode" value="structured"/i);
+    assert.match(html, /name="locationSite" value="Home Base"/i);
+    assert.match(html, /name="locationRoom" value="Garage"/i);
+    assert.match(html, /name="locationArea" value="North wall"/i);
+    assert.match(html, /name="locationShelf" value="Top shelf"/i);
+
+    assert.equal(duplicatedBox.locationMode, 'structured');
+    assert.equal(duplicatedBox.simpleLocation, '');
+    assert.deepEqual(duplicatedBox.structuredLocation, {
+      site: 'Home Base',
+      room: 'Garage',
+      area: 'North wall',
+      shelf: 'Top shelf',
+    });
   } finally {
     await app.close();
   }
