@@ -4,6 +4,7 @@ import {
   handleArchiveBoxRequest,
   handleCreateBoxItemRequest,
   handleDeleteBoxItemRequest,
+  handleDuplicateBoxRequest,
   handleGetBoxPageRequest,
   handleRestoreBoxRequest,
   handleUpdateBoxItemRequest,
@@ -165,6 +166,19 @@ export async function handleBoxRoutes({
         workspaceId: workspace.id,
         pathname: boxPath,
         itemId,
+        response,
+        redirect,
+        sendNotFound,
+      });
+    });
+  }
+
+  if (method === 'POST' && /^\/boxes\/[^/]+\/duplicate$/.test(pathname)) {
+    return handleWorkspaceRoute({ store, request, response, requireWorkspace, redirect }, async (workspace) => {
+      await handleDuplicateBoxRequest({
+        store,
+        workspaceId: workspace.id,
+        pathname,
         response,
         redirect,
         sendNotFound,

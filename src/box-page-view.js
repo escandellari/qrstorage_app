@@ -1,8 +1,9 @@
-export function renderBoxActions({ escapeHtml, labelPath }) {
+export function renderBoxActions({ escapeHtml, labelPath, duplicatePath = '' }) {
   return `<nav>
     <p><a href="/inventory">Inventory</a></p>
     <p><a href="/inventory/search">Search inventory</a></p>
     <p><a href="${escapeHtml(labelPath)}">Print label</a></p>
+    ${duplicatePath ? `<form method="post" action="${escapeHtml(duplicatePath)}"><button type="submit">Duplicate box</button></form>` : ''}
   </nav>`;
 }
 
