@@ -1,6 +1,7 @@
 import { renderBoxConflictMessage, renderBoxEditSection, renderBoxNotesCounterScript } from './box-edit-view.js';
 import { renderBoxActions, renderBoxItemsSection } from './box-page-view.js';
 import { MAX_BOX_NAME_LENGTH, MAX_BOX_NOTES_LENGTH } from './box-details.js';
+import { BOX_NOT_FOUND_HEADING, BOX_NOT_FOUND_LINK_TEXT, BOX_NOT_FOUND_MESSAGE, BOX_NOT_FOUND_TITLE } from './box-not-found.js';
 import { escapeHtml, renderPage } from './html.js';
 import { renderInventorySearchForm } from './inventory-search-form.js';
 
@@ -213,12 +214,12 @@ export function renderLabelPage(box, { qrSvg, qrTarget }) {
 
 export function renderBoxNotFoundPage() {
   return renderPage({
-    title: 'Box not found',
+    title: BOX_NOT_FOUND_TITLE,
     body: `
       <main>
-        <h1>We couldn't find that box</h1>
-        <p>Check the code and try again.</p>
-        <p><a href="/inventory">Back to inventory</a></p>
+        <h1>${BOX_NOT_FOUND_HEADING}</h1>
+        <p>${BOX_NOT_FOUND_MESSAGE}</p>
+        <p><a href="/inventory">${BOX_NOT_FOUND_LINK_TEXT}</a></p>
       </main>
     `,
   });

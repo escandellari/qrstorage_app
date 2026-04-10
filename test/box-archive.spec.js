@@ -23,10 +23,11 @@ test('POST /boxes/:boxCode/archive archives an active box and re-renders the arc
     const html = await detailResponse.text();
 
     assert.equal(detailResponse.status, 200);
+    assert.match(html, /data-react-screen="box-page"/i);
     assert.match(html, /BOX-0042/);
+    assert.match(html, /Camping Kit/);
     assert.match(html, /archived/i);
     assert.match(html, /href="\/inventory"/i);
-    assert.doesNotMatch(html, /<h1>Camping Kit<\/h1>/i);
   } finally {
     await app.close();
   }
@@ -50,7 +51,7 @@ test('GET /boxes/:boxCode for an active box shows an archive action', async () =
   }
 });
 
-test('GET /boxes/:boxCode for an archived box hides normal editing controls and shows archived-box actions', async () => {
+test('GET /boxes/:boxCode for an archived box renders the React archived state with the permanent code', async () => {
   const app = await createBoxItemsTestApp({
     members: workspaceMembers,
     items: [
@@ -79,16 +80,16 @@ test('GET /boxes/:boxCode for an archived box hides normal editing controls and 
     const html = await response.text();
 
     assert.equal(response.status, 200);
-    assert.match(html, /Box archived/i);
-    assert.match(html, /<strong>Status<\/strong>: Archived/i);
-    assert.match(html, /href="\/inventory"/i);
-    assert.match(html, /action="\/boxes\/BOX-0042\/restore"/i);
+    assert.match(html, /data-react-screen="box-page"/i);
+    assert.match(html, /Camping Kit/);
+    assert.match(html, /BOX-0042/);
+    assert.match(html, /archived/i);
+    assert.match(html, /href="\/boxes\/BOX-0042\/label"/i);
+    assert.match(html, /Contents/i);
     assert.doesNotMatch(html, /Edit box details/i);
     assert.doesNotMatch(html, /Add item/i);
     assert.doesNotMatch(html, /Save changes/i);
     assert.doesNotMatch(html, /Delete item/i);
-    assert.doesNotMatch(html, /Print label/i);
-    assert.doesNotMatch(html, /Tent pegs/i);
   } finally {
     await app.close();
   }

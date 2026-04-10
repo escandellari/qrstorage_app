@@ -3,10 +3,12 @@ import { hydrateRoot } from 'react-dom/client';
 import { INVENTORY_SHELL_MODEL_ID, INVENTORY_SHELL_ROOT_ID } from './constants.js';
 import { renderInventoryHomeApp } from '../inventory-home-ui/InventoryHomeApp.js';
 import { renderInventorySearchApp } from '../search-ui/InventorySearchApp.js';
+import { renderBoxPageApp } from '../box-page-ui/BoxPageApp.js';
 
 const renderers = {
   'inventory-home': renderInventoryHomeApp,
   'inventory-search': renderInventorySearchApp,
+  'box-page': renderBoxPageApp,
 };
 
 function readPageModel(id) {

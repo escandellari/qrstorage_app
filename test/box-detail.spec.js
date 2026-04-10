@@ -127,3 +127,41 @@ test('GET /boxes/:boxCode escapes the page title for user-provided box names', a
     await app.close();
   }
 });
+
+test('GET /boxes/:boxCode with an invalid code returns the React not-found page without leaking box details', async () => {
+  const app = await createTestServer({
+    seedData: {
+      ...defaultSeedData,
+      boxes: [
+        {
+          id: 'box-1',
+          workspaceId: 'workspace-1',
+          boxCode: 'BOX-0042',
+          name: 'Camping Kit',
+          locationSummary: 'Garage shelf',
+          notes: 'Check stove fuel before summer.',
+          status: 'active',
+        },
+      ],
+    },
+  });
+
+  try {
+    const sessionCookie = await signInAs(app, 'owner@example.com');
+    const response = await fetch(`${app.baseUrl}/boxes/NOT-A-BOX`, {
+      headers: { cookie: sessionCookie },
+    });
+    const html = await response.text();
+
+    assert.equal(response.status, 404);
+    assert.match(html, /data-react-screen="box-page"/i);
+    assert.match(html, /we couldn't find that box/i);
+    assert.match(html, /href="\/inventory"/i);
+    assert.doesNotMatch(html, /Camping Kit/);
+    assert.doesNotMatch(html, /Garage shelf/);
+    assert.doesNotMatch(html, /Check stove fuel before summer\./);
+    assert.doesNotMatch(html, /BOX-0042/);
+  } finally {
+    await app.close();
+  }
+});

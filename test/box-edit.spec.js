@@ -24,7 +24,7 @@ test('GET /boxes/:boxCode renders a box edit form with simple location by defaul
     assert.match(html, /name="location"/i);
     assert.match(html, /name="notes"/i);
     assert.match(html, /Use structured location/i);
-    assert.match(html, /data-structured-location-fields hidden/i);
+    assert.match(html, /data-structured-location-fields(?:="true")? hidden/i);
     assert.match(html, /name="locationSite"/i);
     assert.match(html, /name="locationRoom"/i);
     assert.match(html, /name="locationArea"/i);

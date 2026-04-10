@@ -3,6 +3,12 @@ import assert from 'node:assert/strict';
 import { signInAs } from './support/test-server.js';
 import { createBoxItemsTestApp, workspaceMembers } from './support/box-items.js';
 
+function getInputValue(html, name) {
+  const match = html.match(new RegExp(`<input[^>]*name="${name}"[^>]*value="([^"]*)"`, 'i'));
+  assert.ok(match, `Expected input ${name} to be present`);
+  return match[1];
+}
+
 test('PATCH /boxes/:boxCode with a stale changed box field shows a conflict screen with the latest saved content', async () => {
   const app = await createBoxItemsTestApp({ members: workspaceMembers });
 
@@ -42,6 +48,78 @@ test('PATCH /boxes/:boxCode with a stale changed box field shows a conflict scre
         originalBoxName: 'Camping Kit',
         originalBoxLocation: 'Garage shelf',
         originalBoxNotes: '',
+      }),
+    });
+    const html = await staleSave.text();
+
+    assert.equal(staleSave.status, 200);
+    assert.match(html, /This box was updated by someone else\./i);
+    assert.match(html, /Latest saved box/i);
+    assert.match(html, /Winter Camping Kit/);
+    assert.match(html, /value="Archive Camping Kit"/i);
+    assert.doesNotMatch(html, /<h1>Archive Camping Kit<\/h1>/i);
+  } finally {
+    await app.close();
+  }
+});
+
+test('GET /boxes/:boxCode carries original box values so a stale page shows the conflict state', async () => {
+  const app = await createBoxItemsTestApp({ members: workspaceMembers });
+
+  try {
+    const firstUserCookie = await signInAs(app, 'owner@example.com');
+    const secondUserCookie = await signInAs(app, 'editor@example.com');
+
+    const detailResponse = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      headers: { cookie: secondUserCookie },
+    });
+    const detailHtml = await detailResponse.text();
+
+    assert.equal(detailResponse.status, 200);
+
+    const firstSave = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      method: 'PATCH',
+      redirect: 'manual',
+      headers: {
+        cookie: firstUserCookie,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        name: 'Winter Camping Kit',
+        location: 'Garage shelf',
+        notes: '',
+        originalBoxName: 'Camping Kit',
+        originalBoxLocation: 'Garage shelf',
+        originalBoxNotes: '',
+        originalBoxLocationMode: 'simple',
+        originalBoxLocationSite: '',
+        originalBoxLocationRoom: '',
+        originalBoxLocationArea: '',
+        originalBoxLocationShelf: '',
+      }),
+    });
+
+    assert.equal(firstSave.status, 302);
+
+    const staleSave = await fetch(`${app.baseUrl}/boxes/BOX-0042`, {
+      method: 'PATCH',
+      headers: {
+        cookie: secondUserCookie,
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        name: 'Archive Camping Kit',
+        location: 'Garage shelf',
+        notes: '',
+        locationMode: getInputValue(detailHtml, 'locationMode'),
+        originalBoxName: getInputValue(detailHtml, 'originalBoxName'),
+        originalBoxLocation: getInputValue(detailHtml, 'originalBoxLocation'),
+        originalBoxNotes: getInputValue(detailHtml, 'originalBoxNotes'),
+        originalBoxLocationMode: getInputValue(detailHtml, 'originalBoxLocationMode'),
+        originalBoxLocationSite: getInputValue(detailHtml, 'originalBoxLocationSite'),
+        originalBoxLocationRoom: getInputValue(detailHtml, 'originalBoxLocationRoom'),
+        originalBoxLocationArea: getInputValue(detailHtml, 'originalBoxLocationArea'),
+        originalBoxLocationShelf: getInputValue(detailHtml, 'originalBoxLocationShelf'),
       }),
     });
     const html = await staleSave.text();
